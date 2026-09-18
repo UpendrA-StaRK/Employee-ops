@@ -1,0 +1,58 @@
+﻿# ============================================================
+# Employee Operations AI — .gitignore
+# ============================================================
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+wheels/
+MANIFEST
+
+# --- Virtual environments ---
+.venv/
+venv/
+env/
+.env
+
+# --- uv ---
+uv.lock          # Optionally commit this if you want reproducible installs.
+
+# --- pytest ---
+.pytest_cache/
+.cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# --- Alembic ---
+# (migration scripts themselves are committed; only exclude local overrides)
+
+# --- IDE / Editor ---
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# --- Generated / temporary data ---
+data/generated/*
+data/raw/*
+data/rejected/*
+!data/generated/.gitkeep
+!data/raw/.gitkeep
+!data/rejected/.gitkeep
+
+# --- Logs ---
+*.log
+
+# --- OS ---
+desktop.ini
