@@ -100,6 +100,8 @@ At the start of every session:
 
 If required information is genuinely unavailable, ask only for the missing information.
 
+Commit Rule: Do not commit changes automatically. Wait until I explicitly say “commit”. If I say “changes”, make the requested changes first and commit only after I subsequently say “commit”.
+
 ---
 
 ## 2. Learning-First Rule
@@ -386,6 +388,9 @@ If a previous decision is changed, append a new entry:
 * 2026-09-18: **Health endpoint reports DB unavailability in body, not via HTTP status code** — Process-level orchestration (Docker, k8s) should distinguish "service down" from "service degraded"; always returning 200 is intentional — affects GET /health response contract.
 * 2026-09-18: **Alembic initialized with `alembic/` directory; sqlalchemy.url overridden from app settings in env.py** — Single source of truth for DATABASE_URL; avoids duplication between alembic.ini and .env — affects migration workflow.
 * 2026-09-18: **No `__init__.py` in `generators/`, `data/`, `sql/`, `docs/`** — These directories are not Python packages; they hold scripts/data/assets — correct per Python packaging conventions.
+* 2026-09-18: **Use `psycopg[binary]` instead of `psycopg2-binary`** — Modern psycopg3 natively supports standard Python datetime/timezone management seamlessly and handles the `postgresql+psycopg://` URI.
+* 2026-09-18: **Use `StaticPool` and transactions for testing** — Ensures isolated tests without accidentally mutating or wiping the local development database by connecting to a separate `employee_ops_test` DB and rolling back after each test fixture.
+* 2026-09-18: **Remove hardcoded database credentials** — Made `database_url` in config strictly depend on `.env` (no default with fake credentials) and dynamically derive the test URL.
 
 ---
 
@@ -414,6 +419,7 @@ Determine the device/hostname from the execution environment when possible.
 If the exact time or device/hostname cannot be determined reliably, **ask the user rather than guessing**.
 
 * 2026-09-18 15:24 (IST) | Model: Claude Sonnet 4.6 (Thinking) | Device: UPENDRA — Week 1 Task 01 complete: uv project initialized, pyproject.toml, FastAPI app, GET /health, pydantic-settings config, logging, SQLAlchemy session foundation, Alembic init, 6 passing pytest tests, .gitignore, .env.example, README.md, initial git commit (32 files) — Next: Week 1 Task 02 (employee/case CRUD, DB models) or Week 2 data ingestion depending on curriculum schedule.
+* 2026-09-18 16:30 (IST) | Model: Gemini 3.1 Pro (High) | Device: UPENDRA — Week 1 Task 02 (Database + Employee Domain) complete: Employee model, Alembic migration, schemas, repository, service, FastAPI endpoints, and tests implemented. Hardcoded database credentials removed. — Next: Case CRUD, DB models or Week 2 data ingestion depending on curriculum schedule.
 
 ---
 
@@ -423,10 +429,19 @@ If the exact time or device/hostname cannot be determined reliably, **ask the us
 
 ## Current Phase
 
-* Week 1 — Project Foundation (Task 01 complete)
+* Week 1 — Project Foundation & Employee Domain (Task 02 complete)
 
 ## Completed
 
+* Week 1 Task 02: Database + Employee Domain vertical slice
+  * `app/models/employee.py` — SQLAlchemy model
+  * Alembic migration generated and applied
+  * `app/schemas/employee.py` — Pydantic schemas (Create, Response)
+  * `app/repositories/employee.py` — Repository layer
+  * `app/services/employee.py` — Service layer with business logic
+  * `app/api/employee.py` — FastAPI endpoints (POST /employees, GET /employees/{id})
+  * `tests/conftest.py` — Test DB setup with `StaticPool` and transactions
+  * `tests/api/test_employee.py` — API tests (all passing)
 * Week 1 Task 01: Full project foundation implemented and committed to git
   * uv project initialized (`employee-ops-ai`)
   * `pyproject.toml` with runtime and dev dependencies
@@ -446,7 +461,7 @@ If the exact time or device/hostname cannot be determined reliably, **ask the us
 
 ## Next
 
-* Proceed to Week 1 Task 02 (Employee CRUD, Case CRUD, DB models) OR
+* Proceed to Case CRUD, DB models OR
 * Proceed to Week 2 (data ingestion, quality, pipelines) depending on curriculum schedule
 
 ## Blocked / Needs Decision
@@ -468,13 +483,14 @@ If the exact time or device/hostname cannot be determined reliably, **ask the us
 * FastAPI application with GET /health
 * Environment-based configuration
 * Logging foundation
-* SQLAlchemy session foundation (no models yet)
-* Alembic migrations (no migrations yet)
+* SQLAlchemy session foundation
+* Alembic migrations
 * pytest infrastructure
+* **Employee CRUD (Database + Employee Domain)**
 
 ### Explicitly Outside MVP (not yet)
-* Employee CRUD, Case CRUD
-* Database models (Employee, Case, etc.)
+* Case CRUD
+* Database models (Case, CaseHistory, etc.)
 * Authentication/authorization
 * AI, RAG, LLM integrations
 * Data ingestion pipelines

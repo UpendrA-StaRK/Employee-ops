@@ -22,6 +22,7 @@ config.set_main_option("sqlalchemy.url", settings.database_url)
 
 # Import Base so autogenerate can detect model changes (models registered later).
 from app.db.session import Base  # noqa: E402
+import app.models  # noqa: F401, E402
 target_metadata = Base.metadata
 
 

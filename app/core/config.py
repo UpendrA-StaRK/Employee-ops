@@ -24,9 +24,9 @@ class Settings(BaseSettings):
     # Logging
     log_level: str = "INFO"
 
-    # Database
-    database_url: str = "postgresql+psycopg2://user:password@localhost:5432/employee_ops"
+    # Database (uses psycopg driver - psycopg3)
+    database_url: str
 
 
-# Module-level singleton - import this everywhere instead of instantiating Settings directly.
+# Module-level singleton - import this everywhere.
 settings = Settings()
