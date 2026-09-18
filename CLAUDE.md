@@ -376,6 +376,17 @@ If a previous decision is changed, append a new entry:
 
 * YYYY-MM-DD: **Reversed <previous decision>** — <why the previous decision is no longer appropriate> — <new decision and affected components>
 
+### Week 1 Decisions
+
+* 2026-09-18: **Use `uv` for dependency/environment management** — Prescribed by task requirements; modern, fast, and replaces pip/venv/pip-tools in one tool — affects all dependency installation and environment setup.
+* 2026-09-18: **Use `pyproject.toml` as the single source of truth for dependencies** — Prescribed by task; no requirements.txt created — affects how deps are declared and installed.
+* 2026-09-18: **Use `hatchling` as the build backend** — Default for `uv init`; lightweight and PEP 517 compliant; no reason to change — affects editable installs and wheel builds.
+* 2026-09-18: **Separate dev dependencies using `[project.optional-dependencies] dev`** — Keeps runtime image slim; install with `uv sync --extra dev` — affects CI and production deployment.
+* 2026-09-18: **Use synchronous SQLAlchemy engine (psycopg2) for Week 1** — Simplest foundation; no async endpoints exist yet; asyncpg installed as dependency for future use — affects db/session.py engine setup.
+* 2026-09-18: **Health endpoint reports DB unavailability in body, not via HTTP status code** — Process-level orchestration (Docker, k8s) should distinguish "service down" from "service degraded"; always returning 200 is intentional — affects GET /health response contract.
+* 2026-09-18: **Alembic initialized with `alembic/` directory; sqlalchemy.url overridden from app settings in env.py** — Single source of truth for DATABASE_URL; avoids duplication between alembic.ini and .env — affects migration workflow.
+* 2026-09-18: **No `__init__.py` in `generators/`, `data/`, `sql/`, `docs/`** — These directories are not Python packages; they hold scripts/data/assets — correct per Python packaging conventions.
+
 ---
 
 # Session History
@@ -402,6 +413,8 @@ Determine the device/hostname from the execution environment when possible.
 
 If the exact time or device/hostname cannot be determined reliably, **ask the user rather than guessing**.
 
+* 2026-09-18 15:24 (IST) | Model: Claude Sonnet 4.6 (Thinking) | Device: UPENDRA — Week 1 Task 01 complete: uv project initialized, pyproject.toml, FastAPI app, GET /health, pydantic-settings config, logging, SQLAlchemy session foundation, Alembic init, 6 passing pytest tests, .gitignore, .env.example, README.md, initial git commit (32 files) — Next: Week 1 Task 02 (employee/case CRUD, DB models) or Week 2 data ingestion depending on curriculum schedule.
+
 ---
 
 # Current State / Open Threads
@@ -410,53 +423,71 @@ If the exact time or device/hostname cannot be determined reliably, **ask the us
 
 ## Current Phase
 
-* <e.g. Planning / MVP development / Week 2 implementation>
+* Week 1 — Project Foundation (Task 01 complete)
 
 ## Completed
 
-* <completed item>
-* <completed item>
+* Week 1 Task 01: Full project foundation implemented and committed to git
+  * uv project initialized (`employee-ops-ai`)
+  * `pyproject.toml` with runtime and dev dependencies
+  * `app/main.py` — FastAPI application
+  * `app/api/health.py` — GET /health endpoint
+  * `app/core/config.py` — pydantic-settings configuration
+  * `app/core/logging.py` — minimal logging setup
+  * `app/db/session.py` — SQLAlchemy engine/session/Base foundation
+  * `alembic/` — migrations initialized, wired to app settings
+  * `tests/api/test_health.py` — 6 tests, all passing
+  * `.env.example`, `.gitignore`, `README.md`
+  * Git repository initialized, initial commit made
 
 ## In Progress
 
-* <current item>
-* <current item>
+* None
 
 ## Next
 
-* <next item>
-* <next item>
+* Proceed to Week 1 Task 02 (Employee CRUD, Case CRUD, DB models) OR
+* Proceed to Week 2 (data ingestion, quality, pipelines) depending on curriculum schedule
 
 ## Blocked / Needs Decision
 
-* <blocker or "None">
+* None — Week 1 Task 01 is fully complete
 
 ## Known Technical Debt
 
-* <technical debt or "None">
+* Two deprecation warnings from httpx/starlette TestClient — not errors; library ecosystem version compatibility issue; monitor for resolution in a future release.
+* `asyncio_default_fixture_loop_scope` warning from pytest-asyncio — configure in pyproject.toml in Week 2 when async tests are written.
 
 ## Open Questions
 
-* <question or "None">
+* None for Week 1 Task 01
 
 ## Current MVP Boundary
 
-* <what is currently inside the MVP>
-* <what is explicitly outside the MVP>
+### Inside MVP (Week 1)
+* FastAPI application with GET /health
+* Environment-based configuration
+* Logging foundation
+* SQLAlchemy session foundation (no models yet)
+* Alembic migrations (no migrations yet)
+* pytest infrastructure
+
+### Explicitly Outside MVP (not yet)
+* Employee CRUD, Case CRUD
+* Database models (Employee, Case, etc.)
+* Authentication/authorization
+* AI, RAG, LLM integrations
+* Data ingestion pipelines
+* Frontend
+* Synthetic data generation
 
 ## Curriculum Progress
 
-* Week <N>: <status>
-* Week <N>: <status>
-
-Use statuses such as:
-
-* `Not started`
-* `Learning`
-* `Implementing`
-* `Implemented`
-* `Tested`
-* `Complete`
+* Week 1: `Implemented` (Task 01 complete; additional tasks may follow)
+* Week 2: `Not started`
+* Week 3: `Not started`
+* Week 4: `Not started`
+* Week 5: `Not started`
 
 ---
 
