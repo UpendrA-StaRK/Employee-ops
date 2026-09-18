@@ -124,6 +124,8 @@ Concepts that are useful but not required for the current MVP.
 
 Do not unnecessarily delay implementation by requiring mastery of every related concept beforehand.
 
+After Each Part / Week: At the end of every learning or implementation part, explicitly state what has been learned, what remains to be learned, what should be learned before the next part, and the required level of understanding for each topic (e.g., awareness, basic understanding, working knowledge, implementation-level proficiency, or production-level understanding). Do not proceed to the next part if a prerequisite concept has not been learned to the required level.
+
 ---
 
 ## 3. Curriculum-to-Project Mapping
@@ -391,6 +393,7 @@ If a previous decision is changed, append a new entry:
 * 2026-09-18: **Use `psycopg[binary]` instead of `psycopg2-binary`** — Modern psycopg3 natively supports standard Python datetime/timezone management seamlessly and handles the `postgresql+psycopg://` URI.
 * 2026-09-18: **Use `StaticPool` and transactions for testing** — Ensures isolated tests without accidentally mutating or wiping the local development database by connecting to a separate `employee_ops_test` DB and rolling back after each test fixture.
 * 2026-09-18: **Remove hardcoded database credentials** — Made `database_url` in config strictly depend on `.env` (no default with fake credentials) and dynamically derive the test URL.
+* 2026-09-18: **Employee Deletion Strategy** — Do not hard delete employees. Use soft deletes (e.g., `status = 'INACTIVE'`) or a historical audit table to maintain historical case integrity for left/deleted employees. To be fully implemented in a future phase.
 
 ---
 
@@ -420,6 +423,7 @@ If the exact time or device/hostname cannot be determined reliably, **ask the us
 
 * 2026-09-18 15:24 (IST) | Model: Claude Sonnet 4.6 (Thinking) | Device: UPENDRA — Week 1 Task 01 complete: uv project initialized, pyproject.toml, FastAPI app, GET /health, pydantic-settings config, logging, SQLAlchemy session foundation, Alembic init, 6 passing pytest tests, .gitignore, .env.example, README.md, initial git commit (32 files) — Next: Week 1 Task 02 (employee/case CRUD, DB models) or Week 2 data ingestion depending on curriculum schedule.
 * 2026-09-18 16:30 (IST) | Model: Gemini 3.1 Pro (High) | Device: UPENDRA — Week 1 Task 02 (Database + Employee Domain) complete: Employee model, Alembic migration, schemas, repository, service, FastAPI endpoints, and tests implemented. Hardcoded database credentials removed. — Next: Case CRUD, DB models or Week 2 data ingestion depending on curriculum schedule.
+* 2026-09-18 17:15 (IST) | Model: Gemini 3.1 Pro (High) | Device: UPENDRA — Week 1 Task 03 (Case Management Domain) complete: Case model with Enums, Alembic migration, schemas, repository, service, and FastAPI endpoints implemented. Added testing and updated README. — Next: Week 2 Data ingestion.
 
 ---
 
@@ -429,10 +433,18 @@ If the exact time or device/hostname cannot be determined reliably, **ask the us
 
 ## Current Phase
 
-* Week 1 — Project Foundation & Employee Domain (Task 02 complete)
+* Week 1 — Project Foundation, Employee & Case Domain (Part 3 complete)
 
 ## Completed
 
+* Week 1 Part 3: Case Management vertical slice
+  * `app/models/case.py` — SQLAlchemy model with Enums
+  * Alembic migration generated and applied
+  * `app/schemas/case.py` — Pydantic schemas 
+  * `app/repositories/case.py` — Repository layer
+  * `app/services/case.py` — Service layer with employee validation logic
+  * `app/api/case.py` — FastAPI endpoints with query parameter filtering
+  * `tests/api/test_case.py` — API tests for Case domain (all passing)
 * Week 1 Task 02: Database + Employee Domain vertical slice
   * `app/models/employee.py` — SQLAlchemy model
   * Alembic migration generated and applied
@@ -461,8 +473,13 @@ If the exact time or device/hostname cannot be determined reliably, **ask the us
 
 ## Next
 
-* Proceed to Case CRUD, DB models OR
-* Proceed to Week 2 (data ingestion, quality, pipelines) depending on curriculum schedule
+* Proceed to Week 2 (Data ingestion, quality, pipelines) based on curriculum schedule.
+
+## Week 1 Learning Summary
+
+* **What has been learned:** Implementation-level proficiency in setting up a FastAPI project, SQLAlchemy (with `psycopg3`), Alembic migrations, database testing with transaction rollbacks, Pydantic data validation, and creating dependent relational entities (Cases) with Enums.
+* **What remains to be learned:** Implementing Case History (audit trailing), AI workflows (RAG), and data ingestion.
+* **Should be learned before next part (Week 2):** Basic understanding of data pipelines, synthetic data generation approaches, and data validation techniques.
 
 ## Blocked / Needs Decision
 
@@ -487,10 +504,10 @@ If the exact time or device/hostname cannot be determined reliably, **ask the us
 * Alembic migrations
 * pytest infrastructure
 * **Employee CRUD (Database + Employee Domain)**
+* **Case CRUD (Database + Case Domain)**
 
 ### Explicitly Outside MVP (not yet)
-* Case CRUD
-* Database models (Case, CaseHistory, etc.)
+* Database models (CaseHistory, Audit tables, etc.)
 * Authentication/authorization
 * AI, RAG, LLM integrations
 * Data ingestion pipelines

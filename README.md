@@ -1,4 +1,4 @@
-﻿# Employee Operations AI Case Management Platform
+# Employee Operations AI Case Management Platform
 
 An AI-powered employee operations case management system built incrementally
 across a five-week curriculum. This is **Week 1: Project Foundation**.
@@ -123,15 +123,33 @@ GET /health
 The `database` field is `"ok"` when PostgreSQL is reachable, `"unavailable"` otherwise.
 The endpoint always returns HTTP 200 — database unavailability is reported in the body, not via status code.
 
+## API Endpoints
+
+### Employees
+- `POST /employees` - Create a new employee
+- `GET /employees/{employee_id}` - Retrieve an employee by ID
+
+### Cases
+- `POST /cases` - Create a new case for an employee
+- `GET /cases` - List and filter cases (by employee_id, status, category, priority)
+- `GET /cases/{case_id}` - Retrieve a case by ID
+- `PATCH /cases/{case_id}` - Update a case (status, priority, etc.)
+
+**Case Lifecycle/Statuses:**
+`OPEN` → `IN_PROGRESS` → `PENDING` → `RESOLVED` → `CLOSED`
+
+**Supported Categories:**
+`LEAVE`, `PAYROLL`, `BENEFITS`, `ACCESS`, `GENERAL`
+
+**Supported Priorities:**
+`LOW`, `MEDIUM`, `HIGH`, `URGENT`
+
 ---
 
 ## Current Limitations (Week 1)
 
-- No employee or case data models yet.
 - No authentication or authorization.
-- No business logic or CRUD operations.
 - No AI, RAG, or LLM integrations.
 - No data ingestion or generation pipelines.
 - No frontend.
-- Database schema migrations (Alembic) are prepared but no migrations exist yet.
-- PostgreSQL is required from Week 2 onwards; Week 1 works without an active database connection.
+- No Case History tracking (planned for Part 4).

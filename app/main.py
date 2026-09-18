@@ -21,9 +21,11 @@ app = FastAPI(
 
 from app.api.health import router as health_router  # noqa: E402
 from app.api.employee import router as employee_router  # noqa: E402
+from app.api.case import router as case_router  # noqa: E402
 
 app.include_router(health_router)
 app.include_router(employee_router)
+app.include_router(case_router)
 
 logger.info(
     "Application started | env=%s | version=%s",
