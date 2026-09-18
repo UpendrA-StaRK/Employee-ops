@@ -1,7 +1,8 @@
 """Case service — owns business logic and transaction boundaries."""
-from typing import Sequence
-from sqlalchemy.orm import Session
 import logging
+from typing import Sequence
+
+from sqlalchemy.orm import Session
 
 from app.models.case import Case, CaseStatus, CaseCategory, CasePriority
 from app.models.case_history import CaseHistory

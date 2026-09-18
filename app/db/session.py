@@ -1,10 +1,10 @@
 """Database session and engine configuration.
 
-Uses SQLAlchemy 2.x with a synchronous engine (psycopg2 driver) for Week 1.
-Async support (asyncpg) can be layered in when async endpoints are needed.
+Uses SQLAlchemy 2.x with a synchronous engine (psycopg3 / psycopg[binary] driver).
+Async support can be layered in when async endpoints are needed (Week 2+).
 
-No models are defined here yet; this module only provides the session factory
-and a dependency function for use in FastAPI route handlers.
+No models are imported here; this module provides only the engine, session
+factory, Base class, and a dependency function for FastAPI route handlers.
 """
 import logging
 from collections.abc import Generator

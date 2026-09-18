@@ -198,3 +198,59 @@ def test_invalid_category(client, test_employee):
         },
     )
     assert response.status_code == 422
+
+
+def test_update_nonexistent_case_returns_404(client):
+    """PATCH on a non-existent case must return 404."""
+    resp = client.patch(
+        "/cases/00000000-0000-0000-0000-000000000000",
+        json={"priority": "HIGH"},
+    )
+    assert resp.status_code == 404
+    assert "not found" in resp.json()["detail"].lower()
+
+
+def test_list_cases_filter_by_status(client, test_employee):
+    """GET /cases?status=OPEN should only return OPEN cases."""
+    # Create a case (starts OPEN)
+    resp = client.post("/cases", json={
+        "employee_id": test_employee["employee_id"],
+        "category": "GENERAL",
+        "subject": "Status filter test",
+        "description": "desc",
+    })
+    case_id = resp.json()["case_id"]
+
+    # Move it to IN_PROGRESS
+    client.patch(f"/cases/{case_id}", json={"status": "IN_PROGRESS"})
+
+    # Create a second case that stays OPEN
+    client.post("/cases", json={
+        "employee_id": test_employee["employee_id"],
+        "category": "GENERAL",
+        "subject": "Another open case",
+        "description": "desc",
+    })
+
+    open_cases = client.get(
+        f"/cases?employee_id={test_employee['employee_id']}&status=OPEN"
+    ).json()
+    assert all(c["status"] == "OPEN" for c in open_cases)
+
+    in_progress = client.get(
+        f"/cases?employee_id={test_employee['employee_id']}&status=IN_PROGRESS"
+    ).json()
+    assert all(c["status"] == "IN_PROGRESS" for c in in_progress)
+
+
+def test_response_has_request_id_header(client):
+    """Every response should carry an X-Request-ID header."""
+    resp = client.get("/health")
+    assert "x-request-id" in resp.headers
+
+
+def test_custom_request_id_is_echoed(client):
+    """If the caller sends X-Request-ID, it should be echoed back."""
+    custom_id = "test-correlation-123"
+    resp = client.get("/health", headers={"X-Request-ID": custom_id})
+    assert resp.headers.get("x-request-id") == custom_id

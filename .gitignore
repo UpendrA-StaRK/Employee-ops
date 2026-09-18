@@ -1,4 +1,4 @@
-﻿# ============================================================
+# ============================================================
 # Employee Operations AI — .gitignore
 # ============================================================
 
@@ -30,6 +30,7 @@ uv.lock          # Optionally commit this if you want reproducible installs.
 htmlcov/
 .coverage
 coverage.xml
+coverage.json
 
 # --- Alembic ---
 # (migration scripts themselves are committed; only exclude local overrides)

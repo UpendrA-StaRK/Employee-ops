@@ -102,6 +102,8 @@ If required information is genuinely unavailable, ask only for the missing infor
 
 Commit Rule: Do not commit changes automatically. Wait until I explicitly say “commit”. If I say “changes”, make the requested changes first and commit only after I subsequently say “commit”.
 
+User-Controlled Execution Rule: Do not automatically run tests, builds, migrations, installs, expensive commands, or other token/time-consuming verification steps. Before running such commands, clearly tell me what will be run and why, and wait for my explicit approval. Similarly, do not commit changes automatically; always wait for my explicit “commit” instruction before committing.
+
 ---
 
 ## 2. Learning-First Rule
@@ -401,6 +403,7 @@ If a previous decision is changed, append a new entry:
 * 2026-09-18: **Initial case history record on creation** — When a case is created, one history record is written with `old_status=None`, `new_status=OPEN`. Provides a complete audit trail from day one.
 * 2026-09-18: **`changed_by` placeholder** — Defaults to `"system"`. Real user identity requires authentication (Week 4). Documented in API docstrings and README.
 * 2026-09-18: **Migration Enum reuse** — `case_history` table reuses the PostgreSQL `case_status_enum` type already created by the `cases` migration. Fixed by using `postgresql.ENUM(..., create_type=False)` in the Alembic migration.
+* 2026-09-18: **Engineering hardening & cleanup** — Removed unused `psycopg2-binary`, `asyncpg`, `python-dotenv` dependencies; unified dev dependencies; added Request-ID correlation middleware; added unit test suites (`test_case_transitions.py`, `test_session.py`); achieved 100% test coverage across `app/` (74/74 tests passing).
 
 ---
 
@@ -431,7 +434,8 @@ If the exact time or device/hostname cannot be determined reliably, **ask the us
 * 2026-09-18 15:24 (IST) | Model: Claude Sonnet 4.6 (Thinking) | Device: UPENDRA — Week 1 Part 1 complete: uv project, FastAPI, GET /health, config, logging, SQLAlchemy, Alembic, pytest, git.
 * 2026-09-18 16:30 (IST) | Model: Gemini 3.1 Pro (High) | Device: UPENDRA — Week 1 Part 2 complete: Employee model, migration, schemas, repo, service, endpoints, tests.
 * 2026-09-18 17:15 (IST) | Model: Gemini 3.1 Pro (High) | Device: UPENDRA — Week 1 Part 3 complete: Case model, migration, schemas, repo, service, endpoints, tests.
-* 2026-09-18 20:20 (IST) | Model: Claude Sonnet 4.6 (Thinking) | Device: UPENDRA — Week 1 Part 4 complete: CaseHistory model, lifecycle transition rules, atomic case+history commit, GET /cases/{id}/history, 24 new tests, 44/44 passing. — Next: Week 2 data ingestion.
+* 2026-09-18 20:20 (IST) | Model: Claude Sonnet 4.6 (Thinking) | Device: UPENDRA — Week 1 Part 4 complete: CaseHistory model, lifecycle transition rules, atomic case+history commit, GET /cases/{id}/history, 24 new tests, 44/44 passing.
+* 2026-09-18 20:30 (IST) | Model: Claude Sonnet 4.6 (Thinking) / Gemini 3.8 Flash | Device: UPENDRA — Week 1 Part 5 complete: Engineering hardening, removed unused deps, fixed warnings, added unit test suites, 74/74 tests passing, 100% test coverage. — Next: Week 2.
 
 ---
 
@@ -441,10 +445,19 @@ If the exact time or device/hostname cannot be determined reliably, **ask the us
 
 ## Current Phase
 
-* Week 1 — All 4 Parts complete. Ready for Week 2.
+* Week 1 — All 5 Parts complete. Ready for Week 2.
 
 ## Completed
 
+* Week 1 Part 5: Engineering Hardening
+  * Dependency cleanup: removed unused `psycopg2-binary`, `asyncpg`, `python-dotenv` from `pyproject.toml` and `uv.lock`
+  * Dev dependencies unified into `[project.optional-dependencies] dev`
+  * Configured pytest coverage with 100% branch and statement coverage (74/74 tests passing)
+  * Configured `asyncio_default_fixture_loop_scope` to eliminate pytest-asyncio warning
+  * Added lightweight Request-ID middleware in `app/main.py` returning `X-Request-ID` header
+  * Added unit test suites (`tests/unit/test_case_transitions.py`, `tests/unit/test_session.py`)
+  * Added missing branch/error path tests in `tests/api/test_case.py`
+  * Hardened `README.md`, `.env.example`, and `.gitignore`
 * Week 1 Part 4: Case History + Lifecycle Rules
   * `app/models/case_history.py` — CaseHistory SQLAlchemy model
   * Alembic migration with Enum reuse fix (`create_type=False`)
@@ -454,7 +467,6 @@ If the exact time or device/hostname cannot be determined reliably, **ask the us
   * `app/api/case.py` — rewritten: `GET /cases/{id}/history`, 422 on invalid transition
   * `tests/api/test_case_history.py` — 24 tests (all passing)
   * All repos unified to flush-only; services own commit
-  * 44/44 tests passing
 * Week 1 Part 3: Case Management vertical slice
 * Week 1 Part 2: Database + Employee Domain vertical slice
 * Week 1 Part 1: Project foundation
