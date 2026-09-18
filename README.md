@@ -126,30 +126,68 @@ The endpoint always returns HTTP 200 — database unavailability is reported in 
 ## API Endpoints
 
 ### Employees
-- `POST /employees` - Create a new employee
-- `GET /employees/{employee_id}` - Retrieve an employee by ID
+- `POST /employees` — Create a new employee
+- `GET /employees/{employee_id}` — Retrieve an employee by ID
 
 ### Cases
-- `POST /cases` - Create a new case for an employee
-- `GET /cases` - List and filter cases (by employee_id, status, category, priority)
-- `GET /cases/{case_id}` - Retrieve a case by ID
-- `PATCH /cases/{case_id}` - Update a case (status, priority, etc.)
-
-**Case Lifecycle/Statuses:**
-`OPEN` → `IN_PROGRESS` → `PENDING` → `RESOLVED` → `CLOSED`
-
-**Supported Categories:**
-`LEAVE`, `PAYROLL`, `BENEFITS`, `ACCESS`, `GENERAL`
-
-**Supported Priorities:**
-`LOW`, `MEDIUM`, `HIGH`, `URGENT`
+- `POST /cases` — Create a case for an employee (always starts `OPEN`)
+- `GET /cases` — List and filter cases (`employee_id`, `status`, `category`, `priority`)
+- `GET /cases/{case_id}` — Retrieve a case by ID
+- `PATCH /cases/{case_id}` — Update a case; validates status lifecycle rules
+- `GET /cases/{case_id}/history` — Retrieve status history in chronological order
 
 ---
 
-## Current Limitations (Week 1)
+## Case Lifecycle
+
+Every case starts as `OPEN`. Status transitions are strictly validated:
+
+```
+OPEN ──────────────────────────────────────────── CLOSED
+  │                                                  ▲
+  └──► IN_PROGRESS ──► PENDING ──► RESOLVED ────────┘
+             ▲             │            │
+             └─────────────┘            └──► IN_PROGRESS (reopened)
+```
+
+**Allowed transitions:**
+
+| From          | To                          |
+|---------------|-----------------------------|
+| `OPEN`        | `IN_PROGRESS`, `CLOSED`     |
+| `IN_PROGRESS` | `PENDING`, `RESOLVED`       |
+| `PENDING`     | `IN_PROGRESS`, `RESOLVED`   |
+| `RESOLVED`    | `CLOSED`, `IN_PROGRESS`     |
+| `CLOSED`      | *(terminal — no transitions)* |
+
+Invalid transitions (e.g. `OPEN → RESOLVED`) return **422 Unprocessable Entity**.
+
+**Supported Categories:** `LEAVE`, `PAYROLL`, `BENEFITS`, `ACCESS`, `GENERAL`
+
+**Supported Priorities:** `LOW`, `MEDIUM`, `HIGH`, `URGENT`
+
+---
+
+## Case History
+
+Every status transition creates an immutable `case_history` record containing:
+- `old_status` — previous status (null for initial creation)
+- `new_status` — status after the transition
+- `comment` — optional annotation supplied with the PATCH request
+- `changed_by` — currently `"system"` (placeholder; real user identity requires authentication)
+- `created_at` — timestamp of the change
+
+The case update and its history record are committed **atomically** — if either fails, neither is persisted.
+
+> **Limitation:** `changed_by` is a development placeholder (`"system"`). Real user identity will be populated when authentication is introduced (Week 4).
+
+---
+
+## Current Limitations
 
 - No authentication or authorization.
 - No AI, RAG, or LLM integrations.
 - No data ingestion or generation pipelines.
 - No frontend.
-- No Case History tracking (planned for Part 4).
+- `changed_by` in case history is a placeholder; real identity comes with auth (Week 4).
+

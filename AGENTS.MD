@@ -124,7 +124,9 @@ Concepts that are useful but not required for the current MVP.
 
 Do not unnecessarily delay implementation by requiring mastery of every related concept beforehand.
 
-After Each Part / Week: At the end of every learning or implementation part, explicitly state what has been learned, what remains to be learned, what should be learned before the next part, and the required level of understanding for each topic (e.g., awareness, basic understanding, working knowledge, implementation-level proficiency, or production-level understanding). Do not proceed to the next part if a prerequisite concept has not been learned to the required level.
+Learning Must Be Explicit: A concept must not be considered “learned” merely because it was used or implemented in code. Before marking a curriculum topic as learned, explicitly teach/explain the concept to the required depth, confirm understanding through questions or a small exercise where appropriate, and then apply it in the project. Code implementation is evidence of application, not evidence of learning by itself.
+
+After Each Part / Week: Explicitly report (1) concepts that were actually taught and learned, (2) concepts only applied through code but not yet learned, (3) concepts still to be learned, (4) what must be learned before the next part, and (5) the required learning level for each concept — awareness, basic understanding, working knowledge, implementation-level proficiency, or production-level understanding. Do not mark a topic as learned solely because it appeared in the code. Do not proceed past a prerequisite topic until it has been learned to the required level.
 
 ---
 
@@ -394,6 +396,11 @@ If a previous decision is changed, append a new entry:
 * 2026-09-18: **Use `StaticPool` and transactions for testing** — Ensures isolated tests without accidentally mutating or wiping the local development database by connecting to a separate `employee_ops_test` DB and rolling back after each test fixture.
 * 2026-09-18: **Remove hardcoded database credentials** — Made `database_url` in config strictly depend on `.env` (no default with fake credentials) and dynamically derive the test URL.
 * 2026-09-18: **Employee Deletion Strategy** — Do not hard delete employees. Use soft deletes (e.g., `status = 'INACTIVE'`) or a historical audit table to maintain historical case integrity for left/deleted employees. To be fully implemented in a future phase.
+* 2026-09-18: **Repositories flush; services commit** — All repositories use `db.flush()` only. The service layer owns `db.commit()` so that multi-step operations (e.g., case update + history record) execute as one atomic transaction.
+* 2026-09-18: **Explicit status transition table** — Lifecycle rules are a plain Python dict (`ALLOWED_TRANSITIONS`) in the service layer. No state-machine library, no workflow engine. Easy to read and extend.
+* 2026-09-18: **Initial case history record on creation** — When a case is created, one history record is written with `old_status=None`, `new_status=OPEN`. Provides a complete audit trail from day one.
+* 2026-09-18: **`changed_by` placeholder** — Defaults to `"system"`. Real user identity requires authentication (Week 4). Documented in API docstrings and README.
+* 2026-09-18: **Migration Enum reuse** — `case_history` table reuses the PostgreSQL `case_status_enum` type already created by the `cases` migration. Fixed by using `postgresql.ENUM(..., create_type=False)` in the Alembic migration.
 
 ---
 
@@ -421,9 +428,10 @@ Determine the device/hostname from the execution environment when possible.
 
 If the exact time or device/hostname cannot be determined reliably, **ask the user rather than guessing**.
 
-* 2026-09-18 15:24 (IST) | Model: Claude Sonnet 4.6 (Thinking) | Device: UPENDRA — Week 1 Task 01 complete: uv project initialized, pyproject.toml, FastAPI app, GET /health, pydantic-settings config, logging, SQLAlchemy session foundation, Alembic init, 6 passing pytest tests, .gitignore, .env.example, README.md, initial git commit (32 files) — Next: Week 1 Task 02 (employee/case CRUD, DB models) or Week 2 data ingestion depending on curriculum schedule.
-* 2026-09-18 16:30 (IST) | Model: Gemini 3.1 Pro (High) | Device: UPENDRA — Week 1 Task 02 (Database + Employee Domain) complete: Employee model, Alembic migration, schemas, repository, service, FastAPI endpoints, and tests implemented. Hardcoded database credentials removed. — Next: Case CRUD, DB models or Week 2 data ingestion depending on curriculum schedule.
-* 2026-09-18 17:15 (IST) | Model: Gemini 3.1 Pro (High) | Device: UPENDRA — Week 1 Task 03 (Case Management Domain) complete: Case model with Enums, Alembic migration, schemas, repository, service, and FastAPI endpoints implemented. Added testing and updated README. — Next: Week 2 Data ingestion.
+* 2026-09-18 15:24 (IST) | Model: Claude Sonnet 4.6 (Thinking) | Device: UPENDRA — Week 1 Part 1 complete: uv project, FastAPI, GET /health, config, logging, SQLAlchemy, Alembic, pytest, git.
+* 2026-09-18 16:30 (IST) | Model: Gemini 3.1 Pro (High) | Device: UPENDRA — Week 1 Part 2 complete: Employee model, migration, schemas, repo, service, endpoints, tests.
+* 2026-09-18 17:15 (IST) | Model: Gemini 3.1 Pro (High) | Device: UPENDRA — Week 1 Part 3 complete: Case model, migration, schemas, repo, service, endpoints, tests.
+* 2026-09-18 20:20 (IST) | Model: Claude Sonnet 4.6 (Thinking) | Device: UPENDRA — Week 1 Part 4 complete: CaseHistory model, lifecycle transition rules, atomic case+history commit, GET /cases/{id}/history, 24 new tests, 44/44 passing. — Next: Week 2 data ingestion.
 
 ---
 
@@ -433,28 +441,23 @@ If the exact time or device/hostname cannot be determined reliably, **ask the us
 
 ## Current Phase
 
-* Week 1 — Project Foundation, Employee & Case Domain (Part 3 complete)
+* Week 1 — All 4 Parts complete. Ready for Week 2.
 
 ## Completed
 
+* Week 1 Part 4: Case History + Lifecycle Rules
+  * `app/models/case_history.py` — CaseHistory SQLAlchemy model
+  * Alembic migration with Enum reuse fix (`create_type=False`)
+  * `app/schemas/case_history.py` — CaseHistoryResponse schema
+  * `app/repositories/case_history.py` — flush-only repository
+  * `app/services/case.py` — rewritten: `ALLOWED_TRANSITIONS` dict, atomic commit
+  * `app/api/case.py` — rewritten: `GET /cases/{id}/history`, 422 on invalid transition
+  * `tests/api/test_case_history.py` — 24 tests (all passing)
+  * All repos unified to flush-only; services own commit
+  * 44/44 tests passing
 * Week 1 Part 3: Case Management vertical slice
-  * `app/models/case.py` — SQLAlchemy model with Enums
-  * Alembic migration generated and applied
-  * `app/schemas/case.py` — Pydantic schemas 
-  * `app/repositories/case.py` — Repository layer
-  * `app/services/case.py` — Service layer with employee validation logic
-  * `app/api/case.py` — FastAPI endpoints with query parameter filtering
-  * `tests/api/test_case.py` — API tests for Case domain (all passing)
-* Week 1 Task 02: Database + Employee Domain vertical slice
-  * `app/models/employee.py` — SQLAlchemy model
-  * Alembic migration generated and applied
-  * `app/schemas/employee.py` — Pydantic schemas (Create, Response)
-  * `app/repositories/employee.py` — Repository layer
-  * `app/services/employee.py` — Service layer with business logic
-  * `app/api/employee.py` — FastAPI endpoints (POST /employees, GET /employees/{id})
-  * `tests/conftest.py` — Test DB setup with `StaticPool` and transactions
-  * `tests/api/test_employee.py` — API tests (all passing)
-* Week 1 Task 01: Full project foundation implemented and committed to git
+* Week 1 Part 2: Database + Employee Domain vertical slice
+* Week 1 Part 1: Project foundation
   * uv project initialized (`employee-ops-ai`)
   * `pyproject.toml` with runtime and dev dependencies
   * `app/main.py` — FastAPI application
@@ -473,13 +476,22 @@ If the exact time or device/hostname cannot be determined reliably, **ask the us
 
 ## Next
 
-* Proceed to Week 2 (Data ingestion, quality, pipelines) based on curriculum schedule.
+* Proceed to **Week 2** (Data ingestion, quality, pipelines).
 
 ## Week 1 Learning Summary
 
-* **What has been learned:** Implementation-level proficiency in setting up a FastAPI project, SQLAlchemy (with `psycopg3`), Alembic migrations, database testing with transaction rollbacks, Pydantic data validation, and creating dependent relational entities (Cases) with Enums.
-* **What remains to be learned:** Implementing Case History (audit trailing), AI workflows (RAG), and data ingestion.
-* **Should be learned before next part (Week 2):** Basic understanding of data pipelines, synthetic data generation approaches, and data validation techniques.
+### Concepts Applied in Code (not yet formally taught)
+* SQLAlchemy 2.x `Mapped` / `mapped_column` ORM style
+* Alembic autogenerate and manual migration fixups
+* Pydantic v2 `model_copy`, `model_dump(exclude_unset=True)`
+* psycopg3 driver differences vs psycopg2
+* PostgreSQL named Enum type reuse across tables
+
+### Must Learn Before Week 2
+* **Data pipelines** — awareness of batch vs stream, ETL vs ELT
+* **Data quality** — basic understanding of validation, nulls, duplicates
+* **Synthetic data generation** — working knowledge of Faker / structured generators
+* **CSV/JSON ingestion** — implementation-level (reading, validating, loading)
 
 ## Blocked / Needs Decision
 
@@ -505,10 +517,11 @@ If the exact time or device/hostname cannot be determined reliably, **ask the us
 * pytest infrastructure
 * **Employee CRUD (Database + Employee Domain)**
 * **Case CRUD (Database + Case Domain)**
+* **Case History + Lifecycle Rules**
 
 ### Explicitly Outside MVP (not yet)
-* Database models (CaseHistory, Audit tables, etc.)
-* Authentication/authorization
+* Database models (Audit tables for employees, etc.)
+* Authentication/authorization (Week 4)
 * AI, RAG, LLM integrations
 * Data ingestion pipelines
 * Frontend

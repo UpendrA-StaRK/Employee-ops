@@ -20,7 +20,7 @@ class CaseRepository:
             priority=case_in.priority,
         )
         db.add(db_case)
-        db.commit()
+        db.flush()
         db.refresh(db_case)
         return db_case
 
@@ -53,10 +53,11 @@ class CaseRepository:
 
     def update(self, db: Session, db_case: Case, case_in: CaseUpdate) -> Case:
         update_data = case_in.model_dump(exclude_unset=True)
+        # Strip fields that the service manages separately (status, comment)
+        # so the caller controls what gets written here
         for field, value in update_data.items():
             setattr(db_case, field, value)
-            
-        db.commit()
+        db.flush()
         db.refresh(db_case)
         return db_case
 

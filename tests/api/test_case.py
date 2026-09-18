@@ -153,9 +153,10 @@ def test_update_invalid_fields(client, test_employee):
     )
     case_id = create_response.json()["case_id"]
 
-    # Attempt to update a non-updatable field (employee_id)
-    # Pydantic should ignore extra fields not defined in CaseUpdate 
-    # (since we didn't specify extra="forbid" in the model_config, but we can check it doesn't change it)
+    # First move to IN_PROGRESS (valid from OPEN)
+    client.patch(f"/cases/{case_id}", json={"status": "IN_PROGRESS"})
+
+    # Now PATCH with an extra employee_id field (should be ignored) + valid status
     response = client.patch(
         f"/cases/{case_id}",
         json={

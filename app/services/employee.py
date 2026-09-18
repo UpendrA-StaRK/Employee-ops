@@ -20,7 +20,10 @@ class EmployeeService:
     def create_employee(self, db: Session, employee_in: EmployeeCreate) -> Employee:
         if employee_repo.get_by_email(db, email=employee_in.email):
             raise EmployeeAlreadyExistsError(f"Employee with email {employee_in.email} already exists")
-        return employee_repo.create(db, employee_in)
+        employee = employee_repo.create(db, employee_in)
+        db.commit()
+        db.refresh(employee)
+        return employee
 
     def get_employee(self, db: Session, employee_id: str) -> Employee:
         employee = employee_repo.get(db, employee_id)

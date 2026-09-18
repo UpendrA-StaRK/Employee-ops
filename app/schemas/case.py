@@ -24,6 +24,7 @@ class CaseUpdate(BaseModel):
     description: Optional[str] = None
     status: Optional[CaseStatus] = None
     priority: Optional[CasePriority] = None
+    comment: Optional[str] = None  # Optional annotation for status transitions
 
 
 class CaseResponse(CaseBase):

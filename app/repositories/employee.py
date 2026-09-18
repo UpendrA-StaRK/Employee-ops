@@ -18,7 +18,7 @@ class EmployeeRepository:
             status=employee_in.status,
         )
         db.add(db_employee)
-        db.commit()
+        db.flush()
         db.refresh(db_employee)
         return db_employee
 
