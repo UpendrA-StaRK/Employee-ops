@@ -126,25 +126,104 @@ Override the test database URL by setting `TEST_DATABASE_URL` in `.env`.
 
 ---
 
-## Architecture
+## Synthetic Data Generator
+
+A deterministic, reproducible synthetic data generator is provided for development and testing. It generates realistic `Employee`, `Case`, and `CaseHistory` records using only the Python standard library.
+
+### Generation (CLI)
+
+The generator runs independently of the production app and exports CSV and JSON to `data/generated/`.
+
+```bash
+# Generate 100 employees and 200 cases using the default clean scenario
+uv run python -m generators.generate --seed 42
+
+# Configure volume
+uv run python -m generators.generate --employees 500 --cases 2000 --scenario clean --seed 42
+```
+
+### Database Seeding
+
+The seeder inserts the generated data into your local development database. It is **non-destructive** by default (existing records are skipped).
+
+```bash
+uv run python -m generators.seed
+
+# DESTRUCTIVE: truncate existing data before seeding
+uv run python -m generators.seed --clean
+```
+
+### Data Scenarios
+
+The generator supports testing different data quality scenarios (used in Week 2):
+
+- `clean`: Valid consistent data, matching all relations and constraints.
+- `duplicates`: Introduces duplicate employee/case records.
+- `missing_fields`: Introduces missing mandatory fields (e.g., null subject/email).
+- `invalid_values`: Introduces invalid enums, malformed emails, and invalid dates.
+- `orphan_records`: Introduces broken foreign keys (cases referencing missing employees).
+
+```bash
+uv run python -m generators.generate --scenario duplicates --seed 42
+```
+
+---
+
+## Data Model
+
+The core domain model focuses on Employee Operations. The synthetic generator is purely for test data and contains no real employee information.
 
 ```
-HTTP Request
-    │
-FastAPI Router (app/api/)      ← thin: routing, schema, HTTP codes
-    │
-Service (app/services/)        ← business logic, transition rules, commit
-    │
-Repository (app/repositories/) ← database access only, flush not commit
-    │
-SQLAlchemy ORM (app/models/)
-    │
+Employee (1) ──────── (many) Case
+                               │
+                               │ (1)
+                               │
+                             (many)
+                          CaseHistory
+```
+
+- **Employee**: Represents a worker with contact details and department.
+- **Case**: A specific request or issue raised for an employee (e.g., payroll, leave, access).
+- **CaseHistory**: An immutable log of status transitions for a specific case.
+
+---
+
+## Architecture
+
+### FDE Solution Anatomy (5-Tier Architecture)
+
+The KPMG FDE curriculum spans five architectural layers, which will be built progressively over 5 weeks:
+1. **UI Layer** — (Not in scope yet)
+2. **API Layer** — FastAPI REST endpoints, Pydantic schemas, routing. (Built Week 1)
+3. **Data Layer** — PostgreSQL, SQLAlchemy ORM, Alembic migrations, Data Pipelines. (Built Week 1 & 2)
+4. **AI Layer** — RAG, Vector Index, LLM generation, Multi-Tool workflows. (Weeks 3 & 4)
+5. **Integration Layer** — Human-in-the-loop approvals, external tool calls. (Week 4)
+
+### API Request Flow
+
+```text
+Client
+  ↓
+FastAPI Router (app/api/)      ← Thin layer: routing, schema validation, HTTP codes
+  ↓
+Service (app/services/)        ← Domain logic, lifecycle rules, transaction commit
+  ↓
+Repository (app/repositories/) ← Database access, SQLAlchemy ORM flush
+  ↓
 PostgreSQL
 ```
 
-**Pattern:** Repositories only `flush()`. Services own `db.commit()`.
-This means multi-step operations (case update + history record) are
-committed atomically in a single transaction.
+**Pattern:** Repositories only `flush()`. Services own `db.commit()`. This means multi-step operations (like updating a case and inserting a history record) are committed atomically in a single transaction.
+
+### Data Generation Flow
+
+```text
+Generator (generators/)        ← Deterministic, stdlib-only
+  ↓
+Synthetic Data                 ← CSV / JSON exports
+  ↓
+Development/Test Database      ← Seeder utility
+```
 
 ---
 

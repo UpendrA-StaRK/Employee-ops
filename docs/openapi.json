@@ -1,0 +1,835 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Employee Operations AI",
+    "description": "Employee Operations AI Case Management Platform \u2014 Week 1: Foundation, Employee & Case Management",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": [
+          "operations"
+        ],
+        "summary": "Health Check",
+        "description": "Return service health status.",
+        "operationId": "health_check_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/employees": {
+      "post": {
+        "tags": [
+          "employees"
+        ],
+        "summary": "Create a new employee",
+        "description": "Create a new employee record.",
+        "operationId": "create_employee_employees_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmployeeCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmployeeResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/employees/{employee_id}": {
+      "get": {
+        "tags": [
+          "employees"
+        ],
+        "summary": "Get an employee by ID",
+        "description": "Retrieve an employee by their ID.",
+        "operationId": "get_employee_employees__employee_id__get",
+        "parameters": [
+          {
+            "name": "employee_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Employee Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmployeeResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cases": {
+      "post": {
+        "tags": [
+          "cases"
+        ],
+        "summary": "Create a new case",
+        "description": "Create a new case for an employee.\n\nThe case always starts with status **OPEN**.\nAn initial history record is created automatically.",
+        "operationId": "create_case_cases_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CaseCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "cases"
+        ],
+        "summary": "List cases",
+        "description": "List cases with optional filtering by employee, status, category, or priority.",
+        "operationId": "list_cases_cases_get",
+        "parameters": [
+          {
+            "name": "employee_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by employee ID",
+              "title": "Employee Id"
+            },
+            "description": "Filter by employee ID"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/CaseStatus"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by case status",
+              "title": "Status"
+            },
+            "description": "Filter by case status"
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/CaseCategory"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by case category",
+              "title": "Category"
+            },
+            "description": "Filter by case category"
+          },
+          {
+            "name": "priority",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/CasePriority"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by case priority",
+              "title": "Priority"
+            },
+            "description": "Filter by case priority"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CaseResponse"
+                  },
+                  "title": "Response List Cases Cases Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cases/{case_id}": {
+      "get": {
+        "tags": [
+          "cases"
+        ],
+        "summary": "Get a case by ID",
+        "description": "Retrieve a case by its ID.",
+        "operationId": "get_case_cases__case_id__get",
+        "parameters": [
+          {
+            "name": "case_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Case Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "cases"
+        ],
+        "summary": "Update a case",
+        "description": "Update mutable fields on an existing case.\n\nWhen **status** changes, the transition is validated against lifecycle rules\nand a history record is created automatically.\n\nInclude an optional **comment** to annotate the reason for a status change.\n\n**Allowed transitions:**\n- `OPEN` \u2192 `IN_PROGRESS`, `CLOSED`\n- `IN_PROGRESS` \u2192 `PENDING`, `RESOLVED`\n- `PENDING` \u2192 `IN_PROGRESS`, `RESOLVED`\n- `RESOLVED` \u2192 `CLOSED`, `IN_PROGRESS`\n- `CLOSED` \u2192 *(terminal \u2014 no further transitions)*",
+        "operationId": "update_case_cases__case_id__patch",
+        "parameters": [
+          {
+            "name": "case_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Case Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CaseUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cases/{case_id}/history": {
+      "get": {
+        "tags": [
+          "cases"
+        ],
+        "summary": "Get case history",
+        "description": "Return the status history for a case in chronological order (oldest first).\n\nReturns 404 if the case does not exist.\n\n> **Note:** The `changed_by` field currently defaults to `\"system\"` as a\n> placeholder. Real user identity will be populated once authentication\n> is introduced in a later week.",
+        "operationId": "get_case_history_cases__case_id__history_get",
+        "parameters": [
+          {
+            "name": "case_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Case Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CaseHistoryResponse"
+                  },
+                  "title": "Response Get Case History Cases  Case Id  History Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CaseCategory": {
+        "type": "string",
+        "enum": [
+          "LEAVE",
+          "PAYROLL",
+          "BENEFITS",
+          "ACCESS",
+          "GENERAL"
+        ],
+        "title": "CaseCategory"
+      },
+      "CaseCreate": {
+        "properties": {
+          "category": {
+            "$ref": "#/components/schemas/CaseCategory"
+          },
+          "subject": {
+            "type": "string",
+            "maxLength": 255,
+            "title": "Subject"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "status": {
+            "$ref": "#/components/schemas/CaseStatus",
+            "default": "OPEN"
+          },
+          "priority": {
+            "$ref": "#/components/schemas/CasePriority",
+            "default": "MEDIUM"
+          },
+          "employee_id": {
+            "type": "string",
+            "title": "Employee Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "category",
+          "subject",
+          "description",
+          "employee_id"
+        ],
+        "title": "CaseCreate"
+      },
+      "CaseHistoryResponse": {
+        "properties": {
+          "history_id": {
+            "type": "string",
+            "title": "History Id"
+          },
+          "case_id": {
+            "type": "string",
+            "title": "Case Id"
+          },
+          "old_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "new_status": {
+            "$ref": "#/components/schemas/CaseStatus"
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          },
+          "changed_by": {
+            "type": "string",
+            "title": "Changed By"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "history_id",
+          "case_id",
+          "old_status",
+          "new_status",
+          "comment",
+          "changed_by",
+          "created_at"
+        ],
+        "title": "CaseHistoryResponse"
+      },
+      "CasePriority": {
+        "type": "string",
+        "enum": [
+          "LOW",
+          "MEDIUM",
+          "HIGH",
+          "URGENT"
+        ],
+        "title": "CasePriority"
+      },
+      "CaseResponse": {
+        "properties": {
+          "category": {
+            "$ref": "#/components/schemas/CaseCategory"
+          },
+          "subject": {
+            "type": "string",
+            "maxLength": 255,
+            "title": "Subject"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "status": {
+            "$ref": "#/components/schemas/CaseStatus",
+            "default": "OPEN"
+          },
+          "priority": {
+            "$ref": "#/components/schemas/CasePriority",
+            "default": "MEDIUM"
+          },
+          "case_id": {
+            "type": "string",
+            "title": "Case Id"
+          },
+          "employee_id": {
+            "type": "string",
+            "title": "Employee Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "category",
+          "subject",
+          "description",
+          "case_id",
+          "employee_id",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "CaseResponse"
+      },
+      "CaseStatus": {
+        "type": "string",
+        "enum": [
+          "OPEN",
+          "IN_PROGRESS",
+          "PENDING",
+          "RESOLVED",
+          "CLOSED"
+        ],
+        "title": "CaseStatus"
+      },
+      "CaseUpdate": {
+        "properties": {
+          "category": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseCategory"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "subject": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subject"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "priority": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CasePriority"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          }
+        },
+        "type": "object",
+        "title": "CaseUpdate"
+      },
+      "EmployeeCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 255,
+            "title": "Name"
+          },
+          "email": {
+            "type": "string",
+            "maxLength": 255,
+            "format": "email",
+            "title": "Email"
+          },
+          "department": {
+            "type": "string",
+            "maxLength": 100,
+            "title": "Department"
+          },
+          "job_title": {
+            "type": "string",
+            "maxLength": 100,
+            "title": "Job Title"
+          },
+          "status": {
+            "type": "string",
+            "maxLength": 50,
+            "title": "Status",
+            "default": "ACTIVE"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "email",
+          "department",
+          "job_title"
+        ],
+        "title": "EmployeeCreate"
+      },
+      "EmployeeResponse": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 255,
+            "title": "Name"
+          },
+          "email": {
+            "type": "string",
+            "maxLength": 255,
+            "format": "email",
+            "title": "Email"
+          },
+          "department": {
+            "type": "string",
+            "maxLength": 100,
+            "title": "Department"
+          },
+          "job_title": {
+            "type": "string",
+            "maxLength": 100,
+            "title": "Job Title"
+          },
+          "status": {
+            "type": "string",
+            "maxLength": 50,
+            "title": "Status",
+            "default": "ACTIVE"
+          },
+          "employee_id": {
+            "type": "string",
+            "title": "Employee Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "email",
+          "department",
+          "job_title",
+          "employee_id",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "EmployeeResponse"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HealthResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "service": {
+            "type": "string",
+            "title": "Service"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "database": {
+            "type": "string",
+            "title": "Database"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "service",
+          "version",
+          "database"
+        ],
+        "title": "HealthResponse"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}
