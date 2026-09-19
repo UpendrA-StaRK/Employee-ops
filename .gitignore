@@ -31,7 +31,6 @@ htmlcov/
 .coverage
 coverage.xml
 coverage.json
-
 # --- Alembic ---
 # (migration scripts themselves are committed; only exclude local overrides)
 
@@ -57,3 +56,8 @@ data/rejected/*
 
 # --- OS ---
 desktop.ini
+
+# --- Project Notes & AI Memory ---
+CLAUDE.md
+AGENTS.MD
+Fresher AI Training_Curriculam_Sep2026.md
