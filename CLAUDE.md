@@ -486,6 +486,18 @@ If a previous decision is changed, append a new entry:
 * 2026-09-22: **Unparseable dates become None in standardization — not an exception** — A string like "not-a-date" cannot be parsed structurally. Standardization sets `created_at=None` and lets the Data Quality stage decide whether that is an error.
 * 2026-09-22: **StandardizationError raised only for structural failures** — E.g. non-dict payload. Business-invalid values (wrong status enum, orphan employee_id) are not raised here; they belong to the Data Quality stage.
 
+### Week 2 Part 5 Decisions
+
+* 2026-09-22: **Canonical schemas use Pydantic v2 BaseModel** — Pydantic is already a runtime dependency; reusing it avoids a new framework. Each schema class carries `SCHEMA_VERSION: ClassVar[str]` (e.g. `"employee.v1"`) and `IDENTIFIER_FIELDS: ClassVar[tuple[str, ...]]` — affects `app/pipelines/schemas/canonical.py`.
+* 2026-09-22: **Schema versioning via `<entity>.<version>` ClassVar string** — Simplest possible versioning; no external registry, no Kafka, no infrastructure. Version is readable at runtime and carried on validation results — affects canonical.py, contracts.py, validator.py.
+* 2026-09-22: **Data contracts are frozen Python dataclasses** — Consistent with the RawRecord pattern already in the codebase. Frozen prevents accidental mutation. Contracts reference the schema version constant directly rather than duplicating field lists — affects `app/pipelines/schemas/contracts.py`.
+* 2026-09-22: **Shared `_STANDARD_COMPATIBILITY` rules object** — All four entity contracts share the same compatible/breaking change documentation. Avoids duplication. Any entity-specific exception can override in a future part — affects contracts.py.
+* 2026-09-22: **SchemaValidationError is a standalone Exception, NOT a subclass of StandardizationError** — These are distinct pipeline failures (structural standardization failure vs canonical schema mismatch). Keeping them separate allows handlers to distinguish the failure mode — affects validator.py and tests.
+* 2026-09-22: **Validator raises SchemaValidationError on hard mismatch** — Consistent with the existing pattern where `standardize_employees()` raises on structural failures. Not silently coerced. Log level = ERROR on failure, DEBUG on pass — affects validator.py.
+* 2026-09-22: **Traceability fields excluded from schema validation** — `_raw_run_id` and `_raw_source_system` start with `_` and are stripped from the dict before Pydantic model_validate(). These are pipeline metadata, not schema fields — affects `_dataclass_to_dict()` in validator.py.
+* 2026-09-22: **Nullable decision — department/job_title/status/created_at/updated_at are nullable in schema** — The standardizer may legitimately set these to None (empty string → None, unparseable date → None). Whether None is *acceptable* is a DQ concern (Part 6). Non-nullable: employee_id, name, email, case_id, employee_id, history_id, case_id, new_status, code, name — these can never be None structurally.
+* 2026-09-22: **Schemas sub-package at `app/pipelines/schemas/`** — Consistent with the existing `app/pipelines/` package structure. No new top-level packages introduced.
+
 ---
 
 # Session History
@@ -522,6 +534,7 @@ If the exact time or device/hostname cannot be determined reliably, **ask the us
 * 2026-09-21 22:24 (IST) | Model: Gemini 3.1 Pro (High) | Device: UPENDRA — Week 2 Part 2 complete: File Ingestion pipeline implemented for CSV, JSON, and Parquet natively returning list of dicts. 9/9 tests passing. — Next: Week 2 Part 3 (PostgreSQL + REST ingestion).
 * 2026-09-21 22:51 (IST) | Model: Claude Sonnet 4.6 (Thinking) | Device: UPENDRA — Week 2 Part 3 complete: PostgreSQL source ingestion + REST API ingestion + mock REST server. 122/122 tests passing (9 new DB + 15 new REST). — Next: Week 2 Part 4 (RAW layer / standardisation).
 * 2026-09-22 09:44 (IST) | Model: Claude Sonnet 4.6 (Thinking) | Device: UPENDRA — Week 2 Part 4 complete: RAW layer (wrap/persist/load RawRecord) + standardization (Employee, Case, CaseHistory, DepartmentReference). 168/168 tests passing (46 new). — Next: Week 2 Part 5 (Data Quality + Rejected Records).
+* 2026-09-22 10:22 (IST) | Model: Claude Sonnet 4.6 (Thinking) | Device: UPENDRA — Week 2 Part 5 complete: Canonical schemas (Pydantic v2), data contracts (frozen dataclasses), schema validator (SchemaValidationError + SchemaValidationResult), documentation (docs/schemas_and_contracts.md). Tests written; user to run to confirm pass count. — Next: Week 2 Part 6 (Data Quality + Rejected Records).
 
 ---
 
@@ -531,10 +544,19 @@ If the exact time or device/hostname cannot be determined reliably, **ask the us
 
 ## Current Phase
 
-* Week 2 — Part 4 complete. Parts 5+ not started.
+* Week 2 — Part 5 complete. Part 6 not started.
 
 ## Completed
 
+* Week 2 Part 5: Schemas + Data Contracts
+  * `app/pipelines/schemas/__init__.py`: Package init, public API exports
+  * `app/pipelines/schemas/canonical.py`: Pydantic v2 schemas (EmployeeSchemaV1, CaseSchemaV1, CaseHistorySchemaV1, DepartmentReferenceSchemaV1) with SCHEMA_VERSION + IDENTIFIER_FIELDS
+  * `app/pipelines/schemas/contracts.py`: Frozen DataContract dataclasses (EMPLOYEE_CONTRACT, CASE_CONTRACT, CASE_HISTORY_CONTRACT, DEPARTMENT_REFERENCE_CONTRACT) with CompatibilityRules
+  * `app/pipelines/schemas/validator.py`: SchemaValidationError, SchemaValidationResult, validate_employee/case/case_history/department_reference
+  * `app/pipelines/standardize.py`: Docstring updated to reflect schema validation pipeline position
+  * `tests/unit/test_schemas.py`: Part 5 test suite
+  * `docs/schemas_and_contracts.md`: Architecture documentation
+  * Full suite: **TBD** (user to run tests)
 * Week 2 Part 4: RAW Layer + Standardization
   * `app/pipelines/raw.py`: RawRecord dataclass, wrap_records, persist_raw (data/raw/{run_id}/), load_raw
   * `app/pipelines/standardize.py`: StandardizedEmployee, Case, CaseHistory, DepartmentReference + mappers
@@ -601,7 +623,7 @@ If the exact time or device/hostname cannot be determined reliably, **ask the us
 
 ## Next
 
-* Proceed to **Week 2 Part 5** (Data Quality, rejected records, quarantine framework).
+* Proceed to **Week 2 Part 6** (Data Quality + Rejected Records).
 
 ## Week 1 Learning Summary
 
