@@ -350,6 +350,60 @@ Documentation should prioritize:
 
 ---
 
+## 13. Clarify-Before-Proceeding Rule
+
+Before writing any code for a new prompt, check the prompt for the issues below.
+If ANY are present, STOP and ask clarifying questions first. Do not guess, and
+do not silently pick the "safest" or most literal interpretation.
+
+### Triggers: when to ask
+
+Step 0: Run the Rule 13 check. If any trigger applies, ask before doing steps 1-9.
+
+1. **Subjective or vague constraints** — "lightweight", "heavyweight", "simple",
+   "if sufficient", "avoid unless needed". Ask for the concrete boundary.
+   Example: "Is Pandas (already installed) allowed, or does 'heavyweight' only
+   mean PySpark?"
+2. **Exclusions that may conflict with the likely goal or the curriculum** —
+   "Do not implement X" / "Do not add Y" where later stages, existing code, or
+   the curriculum will probably need X or Y (e.g. Week 2 requires both Pandas
+   and PySpark). Ask whether the exclusion is strict or only for this part.
+3. **Undefined interfaces between stages** — return types, schemas, or formats
+   not specified (e.g. `list[dict]` vs DataFrame), or "later stages will handle
+   it". Ask what the next stage expects as input.
+4. **Installed vs. new dependencies** — if a needed library is already in
+   `pyproject.toml` but the prompt restricts "adding" dependencies, ask whether
+   reusing installed packages is allowed.
+5. **Conflicting instructions** — two rules that can't both be satisfied, or a
+   rule that contradicts the goal, the curriculum, or the Decisions Log. Point
+   out the conflict and ask which wins.
+6. **Missing acceptance criteria** — no definition of "done", no expected
+   inputs/outputs, no tests specified.
+7. **Scope ambiguity** — unclear what belongs in this part versus a later one.
+Before implementing a new prompt, run the Rule 13 (Clarify-Before-Proceeding) check.
+
+### How to ask
+
+- Ask BEFORE implementing, not after.
+- Batch all questions in ONE message; do not drip-feed.
+- Number the questions. For each: state the ambiguity, give 2-3 concrete
+  options, and mark a recommended default with a one-line reason.
+- Keep it short so I can reply "1: A, 2: B".
+- Wait for my answer before writing code.
+- Log any non-trivial answer in the Decisions Log.
+
+### When NOT to ask
+
+- The prompt is clear and specific on the point.
+- The answer already exists in this file, the curriculum, the codebase, or
+  earlier in the conversation (see Agent Working Principles).
+- The decision is trivial and easily reversible (naming, formatting).
+
+### If I say "proceed without questions"
+
+List every assumption at the top of the response and flag which ones would be
+costly to change later.
+
 # Decision Logging
 
 ## Decisions Log
@@ -408,6 +462,30 @@ If a previous decision is changed, append a new entry:
 * 2026-09-18: **Deterministic Lifecycle History Generation** — Reused `ALLOWED_TRANSITIONS` rules in the generator to simulate 0–4 valid status transitions per case, guaranteeing that generated case histories are chronological and terminal statuses match exactly.
 * 2026-09-18: **Non-Destructive Database Seeder** — `generators.seed` inserts missing records by checking existing IDs first, rather than blindly truncating or deleting. Ensures developer data isn't unexpectedly wiped unless `--clean` is explicitly passed.
 
+### Week 2 Decisions
+
+* 2026-09-21: **Add pandas, pyarrow, numpy as project dependencies** — Week 2 curriculum explicitly requires Pandas and PySpark for data transformation. PySpark 4.2.0 already installed but broken without pandas >= 2.2.0. pyarrow is the Parquet engine. numpy is a transitive requirement. Declared in pyproject.toml; no new frameworks introduced.
+* 2026-09-21: **Parquet serialization in generate.py (CLI layer), not generator.py (core)** — Preserves the documented Week 1 decision that generator.py is 100% stdlib-only and zero-dependency. pyarrow import lives in the CLI serialization layer only.
+* 2026-09-21: **Parquet schema uses nullable string columns** — Generator output is string-dominant (UUIDs, ISO timestamps, enum strings, free text). Using pa.string() for all columns avoids type inference surprises with controlled bad-data scenarios (ZOMBIE status, NOT_AN_EMAIL, not-a-date). Pipeline's schema validation layer will cast types on ingest.
+* 2026-09-21: **--format 'all' replaces 'both' as canonical multi-format flag** — 'both' (csv+json only) is kept as a backward-compatible alias, now expanded to emit all three formats (csv+json+parquet). 'all' is the new canonical value.
+* 2026-09-21: **File Ingestion uses simple `list[dict]` representation** — For Week 2 Part 2, chosen standard Python `list[dict]` as the predictable in-memory representation. This avoids forcing heavy frameworks (Pandas/PySpark) onto the simple task of reading files, keeping ingestion lightweight.
+* 2026-09-21: **File Ingestion module routing** — Built `app/pipelines/ingestion.py` which exposes specific `ingest_csv`, `ingest_json`, `ingest_parquet` methods, and a central `ingest_file` router. It delegates based on file extension. No business validations are performed here.
+* 2026-09-21: **DataFrames natively supported in ingestion layer** — Added an `ingest_dataframe(path)` method that wraps `ingest_file` and converts the `list[dict]` into a Pandas DataFrame. This guarantees perfectly identical edge-case parsing rules (like preserving strings and nulls) while directly serving DataFrames to downstream pipeline stages that require them.
+* 2026-09-21: **PostgreSQL ingestion uses raw SQL text via a short-lived engine** — `db_ingestion.ingest_postgres(query, url)` creates its own SQLAlchemy engine per call and disposes it after. No ORM models used in the ingestion layer. Keeps ingestion decoupled from the Week 1 domain models.
+* 2026-09-21: **source_departments table as simulated relational source** — A separate table (`source_departments`) is used rather than the Week 1 application tables, to preserve a clear ingestion boundary. Decision made based on user choice.
+* 2026-09-21: **httpx promoted from dev to runtime dependency** — REST ingestion requires httpx at runtime. It was previously dev-only. Moved to `[project.dependencies]` in pyproject.toml.
+* 2026-09-21: **respx added as dev dependency for REST mocking** — Standard httpx mocking companion. Allows deterministic, network-free unit tests for all REST ingestion paths.
+* 2026-09-21: **Mock REST server uses FastAPI with /departments and /job-titles** — Lightweight in-process server in `app/pipelines/mock_rest/server.py`. Used via TestClient in smoke tests; can also be run standalone for manual testing.
+* 2026-09-21: **PostgreSQL ingestion tests use session-scoped committed fixture** — `ingest_postgres` opens its own engine and can only see committed data. The per-test rolling-back `db_session` fixture is invisible to it. Source table is created in `engine.begin()` block (auto-committed) and torn down at session end.
+
+### Week 2 Part 4 Decisions
+
+* 2026-09-22: **RAW records persisted to `data/raw/{run_id}/{source_system}.json`** — Chosen over in-memory-only or SQLite. Disk-based JSON is human-readable, inspectable locally, traceable across runs, and requires zero new infrastructure.
+* 2026-09-22: **RawRecord is a Python dataclass with run_id, source_system, source_type, ingested_at, payload, source_location** — Minimal useful metadata. Avoids over-engineering. `payload` is the original dict untouched.
+* 2026-09-22: **Standardization entities: Employee, Case, CaseHistory (+ DepartmentReference for REST)** — These are the existing domain entities from Week 1. DepartmentReference treats REST reference data as a non-domain entity. No new business entities invented.
+* 2026-09-22: **Unparseable dates become None in standardization — not an exception** — A string like "not-a-date" cannot be parsed structurally. Standardization sets `created_at=None` and lets the Data Quality stage decide whether that is an error.
+* 2026-09-22: **StandardizationError raised only for structural failures** — E.g. non-dict payload. Business-invalid values (wrong status enum, orphan employee_id) are not raised here; they belong to the Data Quality stage.
+
 ---
 
 # Session History
@@ -440,6 +518,10 @@ If the exact time or device/hostname cannot be determined reliably, **ask the us
 * 2026-09-18 20:20 (IST) | Model: Claude Sonnet 4.6 (Thinking) | Device: UPENDRA — Week 1 Part 4 complete: CaseHistory model, lifecycle transition rules, atomic case+history commit, GET /cases/{id}/history, 24 new tests, 44/44 passing.
 * 2026-09-18 20:30 (IST) | Model: Claude Sonnet 4.6 (Thinking) / Gemini 3.8 Flash | Device: UPENDRA — Week 1 Part 5 complete: Engineering hardening, removed unused deps, fixed warnings, added unit test suites, 74/74 tests passing, 100% test coverage.
 * 2026-09-18 20:47 (IST) | Model: Gemini 3.1 Pro (High) | Device: UPENDRA — Week 1 Part 6 complete: Synthetic Data Generator (core, CLI, db seeder, tests, docs), Final Week 1 review. — Next: Week 2 (Enterprise Data Pipeline).
+* 2026-09-21 22:16 (IST) | Model: Claude Sonnet 4.6 (Thinking) | Device: UPENDRA — Week 2 Part 1 complete: Parquet export added to generator CLI, pandas/pyarrow/numpy added to pyproject.toml, 5 new Parquet tests, 14/14 tests passing, sample datasets generated in all 3 formats. — Next: Week 2 Part 2 (ingestion pipeline).
+* 2026-09-21 22:24 (IST) | Model: Gemini 3.1 Pro (High) | Device: UPENDRA — Week 2 Part 2 complete: File Ingestion pipeline implemented for CSV, JSON, and Parquet natively returning list of dicts. 9/9 tests passing. — Next: Week 2 Part 3 (PostgreSQL + REST ingestion).
+* 2026-09-21 22:51 (IST) | Model: Claude Sonnet 4.6 (Thinking) | Device: UPENDRA — Week 2 Part 3 complete: PostgreSQL source ingestion + REST API ingestion + mock REST server. 122/122 tests passing (9 new DB + 15 new REST). — Next: Week 2 Part 4 (RAW layer / standardisation).
+* 2026-09-22 09:44 (IST) | Model: Claude Sonnet 4.6 (Thinking) | Device: UPENDRA — Week 2 Part 4 complete: RAW layer (wrap/persist/load RawRecord) + standardization (Employee, Case, CaseHistory, DepartmentReference). 168/168 tests passing (46 new). — Next: Week 2 Part 5 (Data Quality + Rejected Records).
 
 ---
 
@@ -449,10 +531,31 @@ If the exact time or device/hostname cannot be determined reliably, **ask the us
 
 ## Current Phase
 
-* Week 1 — All 6 Parts complete. Final Review completed. Ready for Week 2.
+* Week 2 — Part 4 complete. Parts 5+ not started.
 
 ## Completed
 
+* Week 2 Part 4: RAW Layer + Standardization
+  * `app/pipelines/raw.py`: RawRecord dataclass, wrap_records, persist_raw (data/raw/{run_id}/), load_raw
+  * `app/pipelines/standardize.py`: StandardizedEmployee, Case, CaseHistory, DepartmentReference + mappers
+  * `tests/unit/test_raw.py`: 19 RAW tests
+  * `tests/unit/test_standardize.py`: 27 standardization tests
+  * Full suite: **168/168 passed**
+  * `app/pipelines/db_ingestion.py`: PostgreSQL source ingestion via raw SQL + SQLAlchemy
+  * `app/pipelines/rest_ingestion.py`: REST API ingestion via httpx with full error handling
+  * `app/pipelines/mock_rest/server.py`: Lightweight FastAPI mock reference service (/departments, /job-titles)
+  * `tests/unit/test_db_ingestion.py`: 9 PostgreSQL tests (success, connection failure, query failure)
+  * `tests/unit/test_rest_ingestion.py`: 15 REST tests (success, 4xx, 5xx, network failure, malformed, mock server)
+  * `pyproject.toml`: httpx promoted to runtime; respx added to dev
+  * Full suite: **122/122 passed**
+  * `app/pipelines/__init__.py`: Added pipelines package.
+  * `app/pipelines/ingestion.py`: Built lightweight ingestion layer (CSV, JSON, Parquet) returning `list[dict]`.
+  * `tests/unit/test_ingestion.py`: Added 9 tests (9/9 passing).
+* Week 2 Part 1: Data Sources + Synthetic Data Generator
+  * `pyproject.toml`: Added pandas>=2.2.0, pyarrow>=17.0, numpy>=1.26
+  * `generators/generate.py`: Added Parquet export (`_write_parquet`), `--format parquet|all`, `both` alias preserved
+  * `tests/unit/test_generator.py`: 5 new Parquet tests added (14/14 passing), all 9 Week 1 tests preserved
+  * Sample datasets generated: `data/generated/` now has CSV, JSON, and Parquet for employees/cases/case_history
 * Week 1 Part 6: Synthetic Data Generator + Final Week 1 Review
   * `generators/generator.py`: Core zero-dependency deterministic generator
   * `generators/generate.py`: CLI supporting scenario mutations and CSV/JSON output
@@ -498,7 +601,7 @@ If the exact time or device/hostname cannot be determined reliably, **ask the us
 
 ## Next
 
-* Proceed to **Week 2** (Data ingestion, quality, pipelines).
+* Proceed to **Week 2 Part 5** (Data Quality, rejected records, quarantine framework).
 
 ## Week 1 Learning Summary
 
@@ -562,7 +665,7 @@ The following items from the Week 1 curriculum have been explicitly evaluated an
 ## Curriculum Progress
 
 * Week 1: `Implemented` (Task 01 complete; additional tasks may follow)
-* Week 2: `Not started`
+* Week 2: `In Progress` (Part 4 complete — RAW + standardization; Parts 5+ pending)
 * Week 3: `Not started`
 * Week 4: `Not started`
 * Week 5: `Not started`

@@ -10,13 +10,25 @@ Options:
                         invalid_values | orphan_records (default: clean)
     --seed INT          Random seed for reproducibility (default: 42)
     --output-dir PATH   Output directory (default: data/generated)
-    --format STR        Output format: csv | json | both (default: both)
+    --format STR        Output format: csv | json | parquet | all (default: all)
+                        Note: 'both' is a legacy alias for 'all' (csv + json + parquet).
+
+Week 2 source formats:
+    csv     → employees.csv, cases.csv, case_history.csv
+    json    → employees.json, cases.json, case_history.json
+    parquet → employees.parquet, cases.parquet, case_history.parquet
+
+All three formats are derived from the same canonical in-memory dataset.
+The generator is deterministic: identical --seed values always produce
+identical output regardless of format.
 
 Examples:
     uv run python -m generators.generate --seed 42
     uv run python -m generators.generate --employees 500 --cases 2000 --scenario clean --seed 42
     uv run python -m generators.generate --scenario duplicates --seed 42
     uv run python -m generators.generate --format json --output-dir data/generated
+    uv run python -m generators.generate --format parquet --seed 42
+    uv run python -m generators.generate --format all --seed 42
 """
 from __future__ import annotations
 
@@ -37,7 +49,10 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 VALID_SCENARIOS = ("clean", "duplicates", "missing_fields", "invalid_values", "orphan_records")
-VALID_FORMATS = ("csv", "json", "both")
+
+# 'all' is the canonical multi-format value; 'both' is a legacy alias kept for
+# backwards-compatibility with existing scripts and documentation.
+VALID_FORMATS = ("csv", "json", "parquet", "all", "both")
 
 
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -82,10 +97,10 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--format",
         type=str,
-        default="both",
+        default="all",
         choices=VALID_FORMATS,
         dest="fmt",
-        help="Output format: csv, json, or both (default: both)",
+        help="Output format: csv, json, parquet, or all (default: all). 'both' is a legacy alias for 'all'.",
     )
     args = parser.parse_args(argv)
 
@@ -97,6 +112,10 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
     return args
 
+
+# ---------------------------------------------------------------------------
+# Writers — each accepts a Path and a list of plain dicts
+# ---------------------------------------------------------------------------
 
 def _write_json(path: Path, records: list[dict]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -119,6 +138,56 @@ def _write_csv(path: Path, records: list[dict]) -> None:
         writer.writerows(records)
     logger.info("Wrote %d records → %s", len(records), path)
 
+
+def _write_parquet(path: Path, records: list[dict]) -> None:
+    """Serialize records to Apache Parquet format using pyarrow.
+
+    The records are first normalized so that ``None`` values become a typed
+    null inside a ``pa.string()`` column (matching the string-dominant schema
+    of the generator output). This preserves controlled bad-data scenarios
+    (missing_fields, invalid_values) faithfully in the Parquet file.
+
+    Args:
+        path: Destination ``.parquet`` file path.
+        records: List of plain dicts from the canonical generator dataset.
+    """
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    if not records:
+        # Write an empty Parquet file with no schema — valid and readable.
+        table = pa.table({})
+        pq.write_table(table, str(path))
+        logger.info("Wrote 0 records → %s", path)
+        return
+
+    # Collect all field names (union of all records in case of heterogeneous rows)
+    all_keys: list[str] = list(records[0].keys())
+
+    # Build per-column lists; treat every column as nullable string so that
+    # controlled bad-data (None, malformed strings) round-trips cleanly.
+    columns: dict[str, list] = {k: [] for k in all_keys}
+    for record in records:
+        for k in all_keys:
+            val = record.get(k)
+            # Coerce non-string, non-None values to str so the schema is uniform.
+            # None stays as None (becomes null in Parquet).
+            columns[k].append(None if val is None else str(val))
+
+    # Build a pyarrow Table with explicit nullable string schema
+    schema = pa.schema([(k, pa.string()) for k in all_keys])
+    arrays = [pa.array(columns[k], type=pa.string()) for k in all_keys]
+    table = pa.Table.from_arrays(arrays, schema=schema)
+
+    pq.write_table(table, str(path))
+    logger.info("Wrote %d records → %s", len(records), path)
+
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
 
 def main(argv: list[str] | None = None) -> int:
     args = _parse_args(argv)
@@ -145,8 +214,11 @@ def main(argv: list[str] | None = None) -> int:
         len(employees), len(cases), len(case_history),
     )
 
-    write_csv = args.fmt in ("csv", "both")
-    write_json = args.fmt in ("json", "both")
+    # 'both' is a legacy alias for 'all'
+    fmt = args.fmt
+    write_csv = fmt in ("csv", "all", "both")
+    write_json = fmt in ("json", "all", "both")
+    write_parquet = fmt in ("parquet", "all", "both")
 
     if write_json:
         _write_json(output_dir / "employees.json", employees)
@@ -157,6 +229,11 @@ def main(argv: list[str] | None = None) -> int:
         _write_csv(output_dir / "employees.csv", employees)
         _write_csv(output_dir / "cases.csv", cases)
         _write_csv(output_dir / "case_history.csv", case_history)
+
+    if write_parquet:
+        _write_parquet(output_dir / "employees.parquet", employees)
+        _write_parquet(output_dir / "cases.parquet", cases)
+        _write_parquet(output_dir / "case_history.parquet", case_history)
 
     logger.info("Done. Output written to: %s", output_dir.resolve())
     return 0
