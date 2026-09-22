@@ -498,6 +498,14 @@ If a previous decision is changed, append a new entry:
 * 2026-09-22: **Nullable decision — department/job_title/status/created_at/updated_at are nullable in schema** — The standardizer may legitimately set these to None (empty string → None, unparseable date → None). Whether None is *acceptable* is a DQ concern (Part 6). Non-nullable: employee_id, name, email, case_id, employee_id, history_id, case_id, new_status, code, name — these can never be None structurally.
 * 2026-09-22: **Schemas sub-package at `app/pipelines/schemas/`** — Consistent with the existing `app/pipelines/` package structure. No new top-level packages introduced.
 
+### Week 2 Part 6 Decisions
+
+* 2026-09-22: **Data Quality sub-package at `app/pipelines/quality/`** — Keeps quality logic distinct from standardizer and schemas.
+* 2026-09-22: **QualityEngine collects multiple failures** — Record is evaluated against all configured rules. A single record yields multiple `RuleFailure` objects if it fails on multiple dimensions (e.g. invalid status AND bad email format).
+* 2026-09-22: **Rejected records persisted to `data/quarantine/{run_id}/{entity}_rejected.json`** — Follows the exact file-based persistence pattern of the RAW layer. Avoids inventing new DB tables or external infrastructure.
+* 2026-09-22: **Engine explicitly separates valid vs rejected records** — Returns a `QualityResult` containing two mutually exclusive lists.
+* 2026-09-22: **System failures intentionally not caught** — Unhandled exceptions in rules bubble up to crash the pipeline. Record-level quality failures are caught and routed to quarantine.
+
 ---
 
 # Session History
@@ -535,6 +543,7 @@ If the exact time or device/hostname cannot be determined reliably, **ask the us
 * 2026-09-21 22:51 (IST) | Model: Claude Sonnet 4.6 (Thinking) | Device: UPENDRA — Week 2 Part 3 complete: PostgreSQL source ingestion + REST API ingestion + mock REST server. 122/122 tests passing (9 new DB + 15 new REST). — Next: Week 2 Part 4 (RAW layer / standardisation).
 * 2026-09-22 09:44 (IST) | Model: Claude Sonnet 4.6 (Thinking) | Device: UPENDRA — Week 2 Part 4 complete: RAW layer (wrap/persist/load RawRecord) + standardization (Employee, Case, CaseHistory, DepartmentReference). 168/168 tests passing (46 new). — Next: Week 2 Part 5 (Data Quality + Rejected Records).
 * 2026-09-22 10:22 (IST) | Model: Claude Sonnet 4.6 (Thinking) | Device: UPENDRA — Week 2 Part 5 complete: Canonical schemas (Pydantic v2), data contracts (frozen dataclasses), schema validator (SchemaValidationError + SchemaValidationResult), documentation (docs/schemas_and_contracts.md). Tests written; user to run to confirm pass count. — Next: Week 2 Part 6 (Data Quality + Rejected Records).
+* 2026-09-22 16:45 (IST) | Model: Gemini 3.1 Pro (High) | Device: UPENDRA — Week 2 Part 6 complete: Data Quality rules (completeness, validity, uniqueness, ref-integrity), Engine (separation), and Quarantine persistence. — Next: Week 2 Parts 7 & 8 (Curated Data + Joins + Reconciliation).
 
 ---
 
@@ -544,9 +553,19 @@ If the exact time or device/hostname cannot be determined reliably, **ask the us
 
 ## Current Phase
 
-* Week 2 — Part 5 complete. Part 6 not started.
+* Week 2 — Part 6 complete. Parts 7+ not started.
 
 ## Completed
+
+* Week 2 Part 6: Data Quality + Rejected Records
+  * `app/pipelines/quality/__init__.py`: Package init
+  * `app/pipelines/quality/rules.py`: `QualityRule` protocol, Completeness, Validity, Uniqueness, Ref-Integrity rules
+  * `app/pipelines/quality/engine.py`: `DataQualityEngine`, `QualityContext`, `QualityResult` (valid vs rejected)
+  * `app/pipelines/quality/rejection.py`: `RejectedRecord` dataclass, `persist_rejected` to `data/quarantine/`
+  * `app/pipelines/standardize.py`: Docstring updated for DQ
+  * `tests/unit/test_quality.py`: Test suite for separation, rules, multiple failures, quarantine, and system errors
+  * `docs/data_quality_and_rejections.md`: Architecture doc
+  * Full suite: **TBD** (user to run tests)
 
 * Week 2 Part 5: Schemas + Data Contracts
   * `app/pipelines/schemas/__init__.py`: Package init, public API exports
@@ -623,7 +642,7 @@ If the exact time or device/hostname cannot be determined reliably, **ask the us
 
 ## Next
 
-* Proceed to **Week 2 Part 6** (Data Quality + Rejected Records).
+* Proceed to **Week 2 Parts 7 & 8** (Curated Data + Joins + Reconciliation + Audit Metadata).
 
 ## Week 1 Learning Summary
 

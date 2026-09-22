@@ -11,7 +11,7 @@ Pipeline position:
       ↓
     SCHEMA VALIDATION  (app/pipelines/schemas/)
       ↓
-    [next: Data Quality — Part 6]
+    DATA QUALITY  (app/pipelines/quality/)
 
 What standardization DOES:
   - Normalises field names to a consistent internal name
