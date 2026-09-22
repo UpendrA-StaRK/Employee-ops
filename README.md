@@ -186,6 +186,12 @@ Employee (1) ──────── (many) Case
 - **Case**: A specific request or issue raised for an employee (e.g., payroll, leave, access).
 - **CaseHistory**: An immutable log of status transitions for a specific case.
 
+## Week 2 Pipeline Documentation
+
+- [Schemas and data contracts](docs/schemas_and_contracts.md)
+- [Data quality and rejected records](docs/data_quality_and_rejections.md)
+- [Curated data, reconciliation, and pipeline runs](docs/curated_reconciliation_and_runs.md)
+
 ---
 
 ## Architecture

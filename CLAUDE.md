@@ -506,6 +506,24 @@ If a previous decision is changed, append a new entry:
 * 2026-09-22: **Engine explicitly separates valid vs rejected records** — Returns a `QualityResult` containing two mutually exclusive lists.
 * 2026-09-22: **System failures intentionally not caught** — Unhandled exceptions in rules bubble up to crash the pipeline. Record-level quality failures are caught and routed to quarantine.
 
+### Week 2 Parts 7+8 Decisions
+
+* 2026-09-22: **Persist curated data as run-scoped JSON files** — Follows the established RAW and quarantine storage pattern, avoids an unrelated database schema/migration change, and keeps each output inspectable at `data/curated/{run_id}/case_operations.json`.
+* 2026-09-22: **Curate `case_operations` at one row per case using a left join to employees** — `case.employee_id` joins `employee.employee_id` with many-cases-to-one-employee cardinality. Unmatched cases are retained with null enrichment and `employee_matched=false`; duplicate case or employee business keys fail the pipeline rather than being hidden with `DISTINCT`.
+* 2026-09-22: **Use file-backed run manifests for basic pipeline audit metadata** — A `PipelineRun` writes `RUNNING`, `SUCCESS`, or `FAILURE` manifests to `data/pipeline_runs/{run_id}.json`, linking counts, reconciliation, source context, and curated output without introducing Part 9 state or database infrastructure.
+* 2026-09-22: **Make stage-count snapshots immutable and require explicit run metadata ownership** — `StageCounts` is frozen and updated with `dataclasses.replace`; a supplied `PipelineRun` cannot have `source_info` silently overwritten. This preserves audit consistency and avoids surprising caller-object mutation.
+
+### Week 2 Part 9 Decisions
+
+* 2026-09-22: **Change indicator is `updated_at` for Employee and Case; `created_at` for CaseHistory** — These fields already exist in the generator output and standardized dataclasses. No new source field was invented.
+* 2026-09-22: **Composite watermark `(watermark_ts, watermark_id)` to handle timestamp ties** — A pure timestamp watermark would silently skip records sharing the same `updated_at`. The composite watermark uses strict greater-than on timestamp, then lexicographic greater-than on entity id as a tie-breaker.
+* 2026-09-22: **Selection semantics: `updated_at > wm_ts` OR `(updated_at == wm_ts AND entity_id > wm_id)`** — Records exactly at both components of the watermark are excluded (already processed). Records with None timestamps pass through to DQ.
+* 2026-09-22: **Watermark state stored in PostgreSQL `pipeline_watermarks` table** — Watermark state is mutable (updated per run), not append-only. A SQL UPDATE is the natural primitive; follows existing SQLAlchemy/Alembic patterns. RAW/curated use file-based append because they are outputs, not state.
+* 2026-09-22: **`commit_watermark()` is an explicit, deliberate call** — Not automatic. Callers must only call it after curated persistence, reconciliation, and SUCCESS run manifest are all complete. Failed runs leave the committed watermark unchanged so the next run retries correctly.
+* 2026-09-22: **`filter_records_by_watermark()` is a pure function** — No database interaction. Takes standardized records and a committed watermark; returns filtered records + candidate new state. Deterministic: same input always produces same output.
+* 2026-09-22: **Full load when watermark is None** — `load_watermark()` returns None on first run. `filter_records_by_watermark()` selects all records in this case.
+* 2026-09-22: **Late-arriving data is a documented limitation, not implemented** — Backdated records whose `updated_at` falls before the committed watermark will be missed. A lookback window is the correct mitigation but is deferred to operational configuration.
+
 ---
 
 # Session History
@@ -544,6 +562,11 @@ If the exact time or device/hostname cannot be determined reliably, **ask the us
 * 2026-09-22 09:44 (IST) | Model: Claude Sonnet 4.6 (Thinking) | Device: UPENDRA — Week 2 Part 4 complete: RAW layer (wrap/persist/load RawRecord) + standardization (Employee, Case, CaseHistory, DepartmentReference). 168/168 tests passing (46 new). — Next: Week 2 Part 5 (Data Quality + Rejected Records).
 * 2026-09-22 10:22 (IST) | Model: Claude Sonnet 4.6 (Thinking) | Device: UPENDRA — Week 2 Part 5 complete: Canonical schemas (Pydantic v2), data contracts (frozen dataclasses), schema validator (SchemaValidationError + SchemaValidationResult), documentation (docs/schemas_and_contracts.md). Tests written; user to run to confirm pass count. — Next: Week 2 Part 6 (Data Quality + Rejected Records).
 * 2026-09-22 16:45 (IST) | Model: Gemini 3.1 Pro (High) | Device: UPENDRA — Week 2 Part 6 complete: Data Quality rules (completeness, validity, uniqueness, ref-integrity), Engine (separation), and Quarantine persistence. — Next: Week 2 Parts 7 & 8 (Curated Data + Joins + Reconciliation).
+* 2026-09-22 18:02 (IST) | Model: GPT-5 | Device: UPENDRA — Week 2 Parts 7+8 implementation added: case-operations curated left join, duplicate-grain protection, reconciliation invariants, pipeline-run manifests, focused tests, and architecture documentation. — Test execution pending explicit user approval.
+* 2026-09-22 18:08 (IST) | Model: GPT-5 | Device: UPENDRA — Addressed review findings for Week 2 Parts 7+8: immutable count snapshots, shared JSON serializer, explicit `PipelineRun` metadata ownership, and added edge-case tests. — Test execution pending explicit user approval.
+* 2026-09-22 18:31 (IST) | Model: Claude Sonnet 4.6 (Thinking) | Device: UPENDRA — Week 2 Part 9 complete: composite watermark, `pipeline_watermarks` Alembic migration, `app/pipelines/incremental.py` (pure filter + DB load/commit), `tests/unit/test_incremental.py`, `docs/incremental_and_idempotency.md`. — Test execution pending user approval.
+
+---
 
 ---
 
@@ -553,9 +576,27 @@ If the exact time or device/hostname cannot be determined reliably, **ask the us
 
 ## Current Phase
 
-* Week 2 — Part 6 complete. Parts 7+ not started.
+* Week 2 — Part 9 complete. Part 10 (PySpark) not started.
 
 ## Completed
+
+* Week 2 Part 9: Incremental + Idempotent Processing
+  * `app/models/watermark.py`: `PipelineWatermark` SQLAlchemy model
+  * `alembic/versions/a1b2c3d4e5f6_create_pipeline_watermarks_table.py`: Migration
+  * `app/pipelines/incremental.py`: `IncrementalState`, `filter_records_by_watermark` (pure), `load_watermark`, `commit_watermark`
+  * `app/models/__init__.py`: Added `PipelineWatermark` export
+  * `tests/unit/test_incremental.py`: 30+ tests (boundary, DB, retry, idempotency, timezone)
+  * `docs/incremental_and_idempotency.md`: Architecture documentation
+  * Full suite: **TBD** (user to run tests)
+
+* Week 2 Parts 7+8: Curated Data + Joins + Reconciliation + Audit Metadata
+  * `app/pipelines/curated.py`: `case_operations` curated dataset, explicit left join, grain protection, run-scoped JSON persistence
+  * `app/pipelines/reconciliation.py`: stage metrics and explicit quality/grain reconciliation invariants
+  * `app/pipelines/run_metadata.py`: pipeline-run lifecycle and JSON run manifests
+  * `app/pipelines/case_operations_pipeline.py`: consumes Part 6 valid records, performs curation/reconciliation, and marks run success/failure
+  * `tests/unit/test_curated_pipeline.py`: deterministic join, unmatched, duplicate, empty-output, reconciliation, immutable-count, and run lifecycle tests
+  * `docs/curated_reconciliation_and_runs.md`: join design, storage, reconciliation, audit lifecycle, and Part 9 boundary
+  * Validation: **not run** — awaiting explicit user approval under the User-Controlled Execution Rule
 
 * Week 2 Part 6: Data Quality + Rejected Records
   * `app/pipelines/quality/__init__.py`: Package init
@@ -638,11 +679,11 @@ If the exact time or device/hostname cannot be determined reliably, **ask the us
 
 ## In Progress
 
-* None
+* Parts 7+8 validation — tests, formatting/linting if configured, and full regression require explicit user approval.
 
 ## Next
 
-* Proceed to **Week 2 Parts 7 & 8** (Curated Data + Joins + Reconciliation + Audit Metadata).
+* With approval, run focused Parts 7+8 tests followed by the complete regression suite; then report results and stop. Do not begin Part 9.
 
 ## Week 1 Learning Summary
 
@@ -706,7 +747,7 @@ The following items from the Week 1 curriculum have been explicitly evaluated an
 ## Curriculum Progress
 
 * Week 1: `Implemented` (Task 01 complete; additional tasks may follow)
-* Week 2: `In Progress` (Part 4 complete — RAW + standardization; Parts 5+ pending)
+* Week 2: `In Progress` (Parts 1–8 implemented; Parts 7+8 validation pending; Part 9 not started)
 * Week 3: `Not started`
 * Week 4: `Not started`
 * Week 5: `Not started`
