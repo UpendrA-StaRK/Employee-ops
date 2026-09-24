@@ -48,6 +48,10 @@ Thumbs.db
 data/generated/*
 data/raw/*
 data/rejected/*
+data/quarantine/*
+data/curated/*
+data/pipeline_runs/*
+data/spark_output/*
 !data/generated/.gitkeep
 !data/raw/.gitkeep
 !data/rejected/.gitkeep

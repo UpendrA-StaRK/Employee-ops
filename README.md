@@ -40,6 +40,7 @@ policy retrieval, and case resolution.
 | ORM         | SQLAlchemy 2.x |
 | Migrations  | Alembic |
 | Database    | PostgreSQL (psycopg3 / psycopg[binary]) |
+| Data pipeline | Pandas, PyArrow, PySpark (local mode) |
 | Testing     | pytest + pytest-cov |
 
 ---
@@ -191,6 +192,106 @@ Employee (1) ──────── (many) Case
 - [Schemas and data contracts](docs/schemas_and_contracts.md)
 - [Data quality and rejected records](docs/data_quality_and_rejections.md)
 - [Curated data, reconciliation, and pipeline runs](docs/curated_reconciliation_and_runs.md)
+- [Incremental processing and idempotency](docs/incremental_and_idempotency.md)
+- [PySpark execution model](docs/pyspark_execution_model.md)
+
+## Week 2 Pipeline Execution
+
+The runnable coordinator preserves the established stages:
+
+```text
+file source -> RAW -> standardize -> schema -> quality/quarantine -> curated -> reconciliation
+```
+
+Generate a small deterministic source set, then run the complete Python
+pipeline. `--run-id` is optional; supplying the same value intentionally
+replaces the same curated file instead of appending duplicate records.
+
+```bash
+uv run python -m generators.generate --employees 5 --cases 8 --seed 42 --format all
+uv run python -m app.pipelines.run_case_operations \
+  --employees data/generated/employees.csv \
+  --cases data/generated/cases.json
+
+# Optional: run the local PySpark analytical aggregation over generated Parquet files
+uv run python -m app.pipelines.spark_analytics
+```
+
+Pipeline evidence is written under `data/`: `raw/`, `quarantine/`,
+`curated/`, and `pipeline_runs/`. A schema-contract error intentionally stops
+the run; a business-quality error is written to quarantine and excluded from
+curated output.
+
+### Pipeline validation
+
+```bash
+# Fast, focused end-to-end pipeline tests
+uv run pytest tests/pipeline/
+
+# All Week 2 unit and pipeline tests
+uv run pytest tests/unit tests/pipeline
+
+# Entire suite
+uv run pytest
+```
+
+The deterministic pipeline fixture covers valid data, quality rejections,
+referential-integrity failures, curated join grain, reconciliation, schema
+failure, and re-running the same logical batch without duplicate output.
+
+## Docker / Repeatable Execution
+
+Docker uses the same `uv.lock` dependency definition, Python pipeline, and
+environment-driven configuration as local execution. It does not alter the
+logical pipeline.
+
+```bash
+# Build and start FastAPI plus PostgreSQL
+docker compose build
+docker compose up
+```
+
+The `db` service exposes no host database port by default. It is marked ready
+only after `pg_isready` succeeds; the application waits for that health check
+before running Alembic migrations and starting Uvicorn. The app is available
+at http://localhost:8000 and its health endpoint is http://localhost:8000/health.
+
+Run the pipeline inside the built container (the `data/` directory is mounted
+to retain its outputs on the host):
+
+```bash
+docker compose run --rm app uv run --no-sync python -m generators.generate --employees 5 --cases 8 --seed 42 --format all
+docker compose run --rm app uv run --no-sync python -m app.pipelines.run_case_operations --employees data/generated/employees.csv --cases data/generated/cases.json
+```
+
+For tests in Docker, Compose initializes an isolated `employee_ops_test`
+database. The command below migrates that database and explicitly points the
+test configuration at it; normal unit tests remain Docker-independent.
+
+```bash
+docker compose run --rm \
+  -e DATABASE_URL=postgresql+psycopg://employee_ops:employee_ops_dev_password@db:5432/employee_ops_test \
+  -e TEST_DATABASE_URL=postgresql+psycopg://employee_ops:employee_ops_dev_password@db:5432/employee_ops_test \
+  app sh -c "uv run --no-sync alembic upgrade head && uv run --no-sync pytest"
+```
+
+For a fresh local Docker database after experimentation, use `docker compose
+down -v` (this intentionally removes the named PostgreSQL volume).
+
+### Docker environment variables
+
+`compose.yaml` supports these non-secret development defaults, which may be
+overridden in a local `.env` file:
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `POSTGRES_DB` | `employee_ops` | PostgreSQL database name |
+| `POSTGRES_USER` | `employee_ops` | PostgreSQL role |
+| `POSTGRES_PASSWORD` | `employee_ops_dev_password` | Local-only PostgreSQL password |
+| `LOG_LEVEL` | `INFO` | Application logging threshold |
+
+`DATABASE_URL`, `APP_ENV`, and `LOG_LEVEL` are injected into the application
+container; no production credentials are committed.
 
 ---
 
@@ -322,6 +423,5 @@ Key events logged:
 - No authentication or authorization (Week 4)
 - `changed_by` in case history is a development placeholder
 - No AI, RAG, or LLM integrations (Weeks 3–5)
-- No data ingestion or generation pipelines (Week 2)
 - No frontend
 - No async endpoints (synchronous SQLAlchemy for Week 1)

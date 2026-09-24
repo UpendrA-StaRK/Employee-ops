@@ -407,6 +407,7 @@ If a previous decision is changed, append a new entry:
 * 2026-09-18: **Synthetic Data Generator (Zero-Dependency)** — Designed `generators` module strictly using Python stdlib (no `Faker` or external libs) to guarantee 100% determinism via `random.Random(seed)`, keeping dev environment light and reproducible. Generator is completely decoupled from the production API.
 * 2026-09-18: **Deterministic Lifecycle History Generation** — Reused `ALLOWED_TRANSITIONS` rules in the generator to simulate 0–4 valid status transitions per case, guaranteeing that generated case histories are chronological and terminal statuses match exactly.
 * 2026-09-18: **Non-Destructive Database Seeder** — `generators.seed` inserts missing records by checking existing IDs first, rather than blindly truncating or deleting. Ensures developer data isn't unexpectedly wiped unless `--clean` is explicitly passed.
+* 2026-09-22: **Thin full-pipeline coordinator and Compose runtime** — Reuses the established Week 2 stages without replacing them; `run_case_operations` composes file ingestion through curated output, while Docker Compose supplies only FastAPI and PostgreSQL with database health gating — affects local/container pipeline execution, repeatability, and pipeline-level verification.
 
 ---
 
@@ -440,6 +441,7 @@ If the exact time or device/hostname cannot be determined reliably, **ask the us
 * 2026-09-18 20:20 (IST) | Model: Claude Sonnet 4.6 (Thinking) | Device: UPENDRA — Week 1 Part 4 complete: CaseHistory model, lifecycle transition rules, atomic case+history commit, GET /cases/{id}/history, 24 new tests, 44/44 passing.
 * 2026-09-18 20:30 (IST) | Model: Claude Sonnet 4.6 (Thinking) / Gemini 3.8 Flash | Device: UPENDRA — Week 1 Part 5 complete: Engineering hardening, removed unused deps, fixed warnings, added unit test suites, 74/74 tests passing, 100% test coverage.
 * 2026-09-18 20:47 (IST) | Model: Gemini 3.1 Pro (High) | Device: UPENDRA — Week 1 Part 6 complete: Synthetic Data Generator (core, CLI, db seeder, tests, docs), Final Week 1 review. — Next: Week 2 (Enterprise Data Pipeline).
+* 2026-09-22 21:02 (IST) | Model: GPT-5 Codex | Device: UPENDRA — Week 2 Parts 11–12 implementation drafted: thin runnable pipeline coordinator, deterministic pipeline tests, Dockerfile, Compose PostgreSQL readiness, and reproducible README guidance. — Validation commands, Docker build/startup, and container execution await explicit user approval.
 
 ---
 
@@ -449,7 +451,7 @@ If the exact time or device/hostname cannot be determined reliably, **ask the us
 
 ## Current Phase
 
-* Week 1 — All 6 Parts complete. Final Review completed. Ready for Week 2.
+* Week 2 — Parts 1–10 implemented previously; Parts 11–12 implementation is ready for validation.
 
 ## Completed
 
@@ -459,6 +461,7 @@ If the exact time or device/hostname cannot be determined reliably, **ask the us
   * `generators/seed.py`: Non-destructive database seeder tool
   * `tests/unit/test_generator.py`: Test suite validating generator output, FK integrity, and transitions
   * Documentation updated with generator flow and comprehensive Week 1 review
+* Week 2 Parts 1–10: ingestion adapters, RAW storage, standardization and contracts, data-quality/quarantine routing, curated case-operations output and reconciliation, incremental watermarks, and local PySpark analytics are present in the repository.
 * Week 1 Part 5: Engineering Hardening
   * Dependency cleanup: removed unused `psycopg2-binary`, `asyncpg`, `python-dotenv` from `pyproject.toml` and `uv.lock`
   * Dev dependencies unified into `[project.optional-dependencies] dev`
@@ -494,11 +497,11 @@ If the exact time or device/hostname cannot be determined reliably, **ask the us
 
 ## In Progress
 
-* None
+* Week 2 Parts 11–12: implementation drafted; validation has not run because project rules require explicit approval before tests, builds, migrations, or Docker commands.
 
 ## Next
 
-* Proceed to **Week 2** (Data ingestion, quality, pipelines).
+* On approval, run focused pipeline tests, Week 2 tests, the full suite, Docker image build, Compose startup, pipeline/container execution, and relevant container tests. Fix any evidence-backed issues before declaring Week 2 complete.
 
 ## Week 1 Learning Summary
 
@@ -517,7 +520,7 @@ If the exact time or device/hostname cannot be determined reliably, **ask the us
 
 ## Blocked / Needs Decision
 
-* None — Week 1 Task 01 is fully complete
+* Explicit approval is required to execute tests, migrations, Docker builds, and Compose startup for Parts 11–12.
 
 ## Known Technical Debt
 
@@ -551,8 +554,8 @@ If the exact time or device/hostname cannot be determined reliably, **ask the us
 
 ## Curriculum Progress
 
-* Week 1: `Implemented` (Task 01 complete; additional tasks may follow)
-* Week 2: `Not started`
+* Week 1: `Implemented` (Task 01 complete)
+* Week 2: `Implementation complete through Part 12; validation pending approval`
 * Week 3: `Not started`
 * Week 4: `Not started`
 * Week 5: `Not started`
