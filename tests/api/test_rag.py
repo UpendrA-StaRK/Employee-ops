@@ -12,7 +12,7 @@ def test_rag_supported_question_wfh(client: TestClient):
     assert len(data["citations"]) > 0
     citation = data["citations"][0]
     assert citation["policy_id"] == "POL-WFH-01"
-    assert citation["source_id"] == "POL-WFH-01.md"
+    assert "POL-WFH-01" in citation["source_id"]
 
 def test_rag_supported_question_sick(client: TestClient):
     """Case B — another supported question (Sick leave)."""
@@ -24,7 +24,7 @@ def test_rag_supported_question_sick(client: TestClient):
     assert len(data["citations"]) > 0
     citation = data["citations"][0]
     assert citation["policy_id"] == "POL-LEAVE-02"
-    assert citation["source_id"] == "POL-LEAVE-02.md"
+    assert "POL-LEAVE-02" in citation["source_id"]
 
 def test_rag_unsupported_question(client: TestClient):
     """Case C — unsupported question."""

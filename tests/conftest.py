@@ -22,10 +22,23 @@ engine = create_engine(TEST_DATABASE_URL, poolclass=StaticPool)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
+from sqlalchemy import text
+from app.services.vector_indexing import index_policy_corpus
+
 @pytest.fixture(scope="session", autouse=True)
 def setup_test_db():
     """Create all tables in the test database once per session."""
+    # Ensure vector extension is present
+    with engine.connect() as conn:
+        conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
+        conn.commit()
+        
     Base.metadata.create_all(bind=engine)
+    
+    # Pre-index the policy corpus into the test DB so RAG tests work
+    with TestingSessionLocal() as session:
+        index_policy_corpus(session)
+        
     yield
     Base.metadata.drop_all(bind=engine)
 

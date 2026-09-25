@@ -21,6 +21,9 @@ dependencies = [
     "pypdf>=6.19.0",
     "python-docx>=1.2.0",
     "reportlab>=5.0.1",
+    "fastembed>=0.8.1",
+    "pgvector>=0.5.0",
+    "sentence-transformers>=6.1.0",
 ]
 
 [project.optional-dependencies]
