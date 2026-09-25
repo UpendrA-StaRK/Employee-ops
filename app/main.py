@@ -10,6 +10,7 @@ from app.core.logging import configure_logging
 from app.api.health import router as health_router
 from app.api.employee import router as employee_router
 from app.api.case import router as case_router
+from app.api.rag import router as rag_router
 
 configure_logging()
 
@@ -45,6 +46,7 @@ async def add_request_id(request: Request, call_next):
 app.include_router(health_router)
 app.include_router(employee_router)
 app.include_router(case_router)
+app.include_router(rag_router)
 
 logger.info(
     "Application started | env=%s | version=%s",
