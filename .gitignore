@@ -55,6 +55,8 @@ data/spark_output/*
 !data/generated/.gitkeep
 !data/raw/.gitkeep
 !data/rejected/.gitkeep
+!data/curated/.gitkeep
+!data/pipeline_runs/.gitkeep
 
 # --- Logs ---
 *.log
