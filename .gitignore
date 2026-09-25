@@ -61,3 +61,13 @@ data/spark_output/*
 
 # --- OS ---
 desktop.ini
+
+# --- Project Notes & AI Memory ---
+CLAUDE.md
+AGENTS.MD
+Fresher AI Training_Curriculam_Sep2026.md
+
+# --- Custom Additions ---
+$HOME/
+fake_java/
+generators/
