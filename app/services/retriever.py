@@ -1,33 +1,104 @@
 """
-Semantic vector retrieval mechanism to demonstrate Part 3 RAG flow.
+Hybrid semantic + keyword retrieval mechanism to demonstrate Part 4 RAG flow.
 """
-from typing import List
+from typing import List, Optional
 from sqlalchemy.orm import Session
-from app.schemas.rag import PolicyEvidence
+from sqlalchemy import func
+from app.schemas.rag import PolicyEvidence, MetadataFilters
 from app.models.knowledge import PolicyChunkVector
 from app.services.embedding import embedding_provider
 
-def retrieve_evidence(db: Session, question: str, top_k: int = 3, max_distance: float = 0.7) -> List[PolicyEvidence]:
+def _apply_metadata_filters(query, filters: Optional[MetadataFilters]):
+    """Applies metadata constraints to a base SQLAlchemy query."""
+    if not filters:
+        return query
+        
+    if filters.jurisdiction:
+        query = query.filter(PolicyChunkVector.metadata_json.op('->>')('jurisdiction') == filters.jurisdiction)
+    if filters.status:
+        query = query.filter(PolicyChunkVector.metadata_json.op('->>')('status') == filters.status)
+    if filters.policy_type:
+        query = query.filter(PolicyChunkVector.metadata_json.op('->>')('policy_type') == filters.policy_type)
+    if filters.policy_id:
+        query = query.filter(PolicyChunkVector.policy_id == filters.policy_id)
+    if filters.version:
+        query = query.filter(PolicyChunkVector.metadata_json.op('->>')('version') == filters.version)
+        
+    return query
+
+def reciprocal_rank_fusion(vector_results, keyword_results, rrf_k=60) -> List[PolicyChunkVector]:
     """
-    Semantic retrieval mechanism using PostgreSQL + pgvector.
-    Returns the Top-K chunks based on cosine similarity, filtered by a maximum distance.
+    Merges independent ranked lists using Reciprocal Rank Fusion (RRF).
+    RRF score = sum( 1 / (rrf_k + rank_i) )
     """
-    # 1. Embed the user question
+    scores = {}
+    records = {}
+    
+    # Process vector ranks
+    for rank, (record, _) in enumerate(vector_results):
+        scores[record.chunk_id] = scores.get(record.chunk_id, 0.0) + 1.0 / (rrf_k + rank + 1)
+        records[record.chunk_id] = record
+        
+    # Process keyword ranks
+    for rank, (record, _) in enumerate(keyword_results):
+        scores[record.chunk_id] = scores.get(record.chunk_id, 0.0) + 1.0 / (rrf_k + rank + 1)
+        records[record.chunk_id] = record
+        
+    # Sort by descending RRF score
+    sorted_chunk_ids = sorted(scores.keys(), key=lambda cid: scores[cid], reverse=True)
+    return [records[cid] for cid in sorted_chunk_ids]
+
+def retrieve_evidence(
+    db: Session, 
+    question: str, 
+    filters: Optional[MetadataFilters] = None,
+    top_k: int = 3, 
+    max_distance: float = 0.7
+) -> List[PolicyEvidence]:
+    """
+    Hybrid retrieval mechanism using PostgreSQL + pgvector + Native Full-Text Search.
+    Merges vector semantic search and exact-match keyword search using RRF.
+    """
+    # Number of candidates to pull from each sub-query before fusion
+    candidate_k = max(top_k * 2, 10)
+    
+    # ---------------------------------------------------------
+    # Path 1: Vector Retrieval (Semantic)
+    # ---------------------------------------------------------
     query_vector = embedding_provider.embed_text(question)
-    
-    # 2. Perform vector similarity search (cosine distance: <=>)
-    # Order by cosine distance ascending (closest first) and apply threshold to maintain no-answer behavior
     distance_col = PolicyChunkVector.embedding.cosine_distance(query_vector)
-    results = db.query(PolicyChunkVector).filter(
-        distance_col < max_distance
-    ).order_by(
-        distance_col
-    ).limit(top_k).all()
     
-    # 3. Map retrieved vectors back to the expected PolicyEvidence representation
+    vec_base_query = db.query(PolicyChunkVector, distance_col.label('distance')).filter(
+        distance_col < max_distance
+    )
+    vec_filtered_query = _apply_metadata_filters(vec_base_query, filters)
+    
+    vector_results = vec_filtered_query.order_by(distance_col).limit(candidate_k).all()
+    
+    # ---------------------------------------------------------
+    # Path 2: Keyword Retrieval (PostgreSQL FTS)
+    # ---------------------------------------------------------
+    # plainto_tsquery transforms a natural language string into an AND-ed keyword query
+    ts_query = func.plainto_tsquery('english', question)
+    rank_col = func.ts_rank(PolicyChunkVector.fts_document, ts_query)
+    
+    fts_base_query = db.query(PolicyChunkVector, rank_col.label('rank')).filter(
+        PolicyChunkVector.fts_document.op('@@')(ts_query)
+    )
+    fts_filtered_query = _apply_metadata_filters(fts_base_query, filters)
+    
+    # Only return matches with positive relevance
+    keyword_results = fts_filtered_query.filter(rank_col > 0).order_by(rank_col.desc()).limit(candidate_k).all()
+    
+    # ---------------------------------------------------------
+    # Result Fusion (RRF)
+    # ---------------------------------------------------------
+    fused_records = reciprocal_rank_fusion(vector_results, keyword_results)
+    final_records = fused_records[:top_k]
+    
+    # Map retrieved records back to PolicyEvidence representation
     evidence = []
-    for record in results:
-        # Extract version from metadata_json if available
+    for record in final_records:
         version = record.metadata_json.get("version", "1.0")
         
         evidence.append(PolicyEvidence(

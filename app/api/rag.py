@@ -20,6 +20,6 @@ def ask_policy_question(request: RagRequest, db: Session = Depends(get_db)) -> R
     2. Pass evidence to generator (with preserved identity).
     3. Return grounded answer and citations (or controlled no-answer).
     """
-    evidence = retrieve_evidence(db, request.question)
+    evidence = retrieve_evidence(db, request.question, filters=request.filters)
     response = generate_answer(request.question, evidence)
     return response

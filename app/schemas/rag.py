@@ -72,11 +72,20 @@ class Citation(BaseModel):
     section: str
     snippet: Optional[str] = None
 
+class MetadataFilters(BaseModel):
+    """Optional filters to apply during retrieval."""
+    jurisdiction: Optional[str] = None
+    status: Optional[str] = None
+    policy_type: Optional[str] = None
+    policy_id: Optional[str] = None
+    version: Optional[str] = None
+
 class RagRequest(BaseModel):
     """
     Request payload for asking a policy question.
     """
     question: str = Field(..., description="The policy question to answer.")
+    filters: Optional[MetadataFilters] = Field(None, description="Optional metadata constraints for retrieval.")
 
 class RagResponse(BaseModel):
     """

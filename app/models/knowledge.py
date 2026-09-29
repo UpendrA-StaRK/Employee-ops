@@ -1,5 +1,6 @@
 """Knowledge models for pgvector."""
-from sqlalchemy import String, Text, JSON
+from sqlalchemy import String, Text, JSON, Computed
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Mapped, mapped_column
 from pgvector.sqlalchemy import Vector
 from app.db.session import Base
@@ -23,3 +24,18 @@ class PolicyChunkVector(Base):
     
     # Preserve Part 2 metadata in a JSON column for traceability and future filtering
     metadata_json: Mapped[dict] = mapped_column(JSON, nullable=False)
+
+    # Full-Text Search Vector (Part 4)
+    # Computed column combining policy_id, title, section, and content.
+    fts_document = mapped_column(
+        postgresql.TSVECTOR,
+        Computed(
+            "to_tsvector('english', "
+            "coalesce(policy_id, '') || ' ' || "
+            "coalesce(metadata_json->>'title', '') || ' ' || "
+            "coalesce(section, '') || ' ' || "
+            "coalesce(content, ''))",
+            persisted=True
+        ),
+        nullable=True
+    )
