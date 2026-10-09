@@ -1,0 +1,29 @@
+[
+    {
+        "id": "eval-wfh-001",
+        "question": "What is the policy for working from home?",
+        "expected_chunk_ids": ["POL-WFH-01.md_struct_0"],
+        "expected_policy_ids": ["POL-WFH-01"],
+        "expected_facts": ["Employees can work from home up to 2 days a week."],
+        "answerability": "answerable",
+        "constraints": {"status": "active"}
+    },
+    {
+        "id": "eval-leave-001",
+        "question": "How many sick days am I allowed?",
+        "expected_chunk_ids": ["POL-LEAVE-02.md_struct_3"],
+        "expected_policy_ids": ["POL-LEAVE-02"],
+        "expected_facts": ["10 paid sick days per year"],
+        "answerability": "answerable",
+        "constraints": {}
+    },
+    {
+        "id": "eval-unknown-001",
+        "question": "What is the policy on taking my dog to Mars?",
+        "expected_chunk_ids": [],
+        "expected_policy_ids": [],
+        "expected_facts": [],
+        "answerability": "unanswerable",
+        "constraints": {}
+    }
+]

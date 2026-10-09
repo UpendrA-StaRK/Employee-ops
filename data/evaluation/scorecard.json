@@ -1,0 +1,29 @@
+{
+    "vector": {
+        "cases_evaluated": 3,
+        "cases_with_ground_truth": 2,
+        "avg_recall_at_k": 1.0,
+        "avg_precision_at_k": 0.3333333333333333,
+        "mrr": 1.0,
+        "avg_retrieval_latency_s": 0.03890496666675366,
+        "avg_generation_latency_s": 2.6466666743848084e-05
+    },
+    "hybrid": {
+        "cases_evaluated": 3,
+        "cases_with_ground_truth": 2,
+        "avg_recall_at_k": 1.0,
+        "avg_precision_at_k": 0.3333333333333333,
+        "mrr": 1.0,
+        "avg_retrieval_latency_s": 0.011218233333541624,
+        "avg_generation_latency_s": 2.276666661297592e-05
+    },
+    "hybrid_rerank": {
+        "cases_evaluated": 3,
+        "cases_with_ground_truth": 2,
+        "avg_recall_at_k": 1.0,
+        "avg_precision_at_k": 0.3333333333333333,
+        "mrr": 0.6666666666666666,
+        "avg_retrieval_latency_s": 3.1097974999999374,
+        "avg_generation_latency_s": 3.906666643160861e-05
+    }
+}

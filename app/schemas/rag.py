@@ -16,6 +16,10 @@ class PolicyMetadata(BaseModel):
     effective_from: Optional[str] = None
     effective_to: Optional[str] = None
     provenance: Optional[str] = None
+    
+    # Part 5: OKF / Provenance explicit relationships
+    supersedes: Optional[str] = None
+    related_policies: List[str] = []
 
 class ParsedSection(BaseModel):
     heading: str
@@ -52,6 +56,7 @@ class PolicyEvidence(BaseModel):
     policy_id: str
     version: str
     section: str
+    chunk_id: Optional[str] = None
 
     @classmethod
     def from_chunk(cls, chunk: DocumentChunk) -> "PolicyEvidence":
